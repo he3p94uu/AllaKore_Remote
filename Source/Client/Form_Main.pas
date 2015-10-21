@@ -1,4 +1,4 @@
-{
+﻿{
 
 
       This source has created by Maickonn Richard.
@@ -576,10 +576,24 @@ begin
 end;
 
 procedure Tfrm_Main.FormCreate(Sender: TObject);
+var
+  _Host: Ansistring;
+  _Port: Integer;
 begin
   // Insert version on Caption of the Form
   Caption := Caption + ' - ' + GetAppVersionStr;
 
+
+  // Reads two exe params - host and port. If not supplied uses constants. to use: client.exe HOST PORT, for ex. AllaKore_Remote_Client.exe 192.168.16.201 3398
+  if (ParamStr(1) <> '') then
+    _Host := ParamStr(1)
+  else
+    _Host := Host;
+
+  if (ParamStr(2) <> '') then
+    _Port := StrToIntDef(ParamStr(2), Port)
+  else
+    _Port := Port;
 
 
   // Define Host, Port and Timeout of Sockets
@@ -617,6 +631,43 @@ var
   s: string;
 begin
   s := Socket.ReceiveText;
+
+  // Combo Keys
+  if (Pos('<|ALTDOWN|>', s) > 0) then
+  begin
+    s := StringReplace(s, '<|ALTDOWN|>', '', [rfReplaceAll]);
+    keybd_event(18, 0, 0, 0);
+  end;
+
+  if (Pos('<|ALTUP|>', s) > 0) then
+  begin
+    s := StringReplace(s, '<|ALTUP|>', '', [rfReplaceAll]);
+    keybd_event(18, 0, KEYEVENTF_KEYUP, 0);
+  end;
+
+  if (Pos('<|CTRLDOWN|>', s) > 0) then
+  begin
+    s := StringReplace(s, '<|CTRLDOWN|>', '', [rfReplaceAll]);
+    keybd_event(17, 0, 0, 0);
+  end;
+
+  if (Pos('<|CTRLUP|>', s) > 0) then
+  begin
+    s := StringReplace(s, '<|CTRLUP|>', '', [rfReplaceAll]);
+    keybd_event(17, 0, KEYEVENTF_KEYUP, 0);
+  end;
+
+  if (Pos('<|SHIFTDOWN|>', s) > 0) then
+  begin
+    s := StringReplace(s, '<|SHIFTDOWN|>', '', [rfReplaceAll]);
+    keybd_event(16, 0, 0, 0);
+  end;
+
+  if (Pos('<|SHIFTUP|>', s) > 0) then
+  begin
+    s := StringReplace(s, '<|SHIFTUP|>', '', [rfReplaceAll]);
+    keybd_event(16, 0, KEYEVENTF_KEYUP, 0);
+  end;
 
   if (Pos('?', s) > 0) then
   begin
@@ -737,7 +788,7 @@ var
   i: Integer;
   FoldersAndFiles: TStringList;
   L: TListItem;
-  FileToUpload: TMemoryStream;
+  FileToUpload: TFileStream;
   Extension: string;
 begin
   inherited;
@@ -919,7 +970,7 @@ begin
 
   { Redirected commands }
 
-  // Desktop Remote (Mouse and Keyboard)
+  // Desktop Remote
         if (Pos('<|RESOLUTION|>', s) > 0) then
         begin
           s2 := s;
@@ -1056,28 +1107,6 @@ begin
         end;
 
 
-  // Combo Keys
-        if (Pos('<|ALTDOWN|>', s) > 0) then
-          keybd_event(18, 0, 0, 0);
-
-        if (Pos('<|ALTUP|>', s) > 0) then
-          keybd_event(18, 0, KEYEVENTF_KEYUP, 0);
-
-        if (Pos('<|CTRLDOWN|>', s) > 0) then
-          keybd_event(17, 0, 0, 0);
-
-        if (Pos('<|CTRLUP|>', s) > 0) then
-          keybd_event(17, 0, KEYEVENTF_KEYUP, 0);
-
-        if (Pos('<|SHIFTDOWN|>', s) > 0) then
-          keybd_event(16, 0, 0, 0);
-
-        if (Pos('<|SHIFTUP|>', s) > 0) then
-          keybd_event(16, 0, KEYEVENTF_KEYUP, 0);
-
-
-
-
 
   // Chat
         if (Pos('<|CHAT|>', s) > 0) then
@@ -1111,14 +1140,14 @@ begin
 
                   Chat_RichEdit.SelStart := Chat_RichEdit.GetTextLen;
                   Chat_RichEdit.SelAttributes.Color := clWhite;
-                  Chat_RichEdit.SelText := '      ' + s2;
+                  Chat_RichEdit.SelText := '   •   ' + s2;
                 end
                 else
                 begin
                   Chat_RichEdit.SelStart := Chat_RichEdit.GetTextLen;
                   Chat_RichEdit.SelAttributes.Style := [];
                   Chat_RichEdit.SelAttributes.Color := clWhite;
-                  Chat_RichEdit.SelText := #13 + '      ' + s2;
+                  Chat_RichEdit.SelText := #13 + '   •   ' + s2;
                 end;
 
                 SendMessage(Chat_RichEdit.Handle, WM_VSCROLL, SB_BOTTOM, 0);
@@ -1195,6 +1224,7 @@ begin
                   L.ImageIndex := 1;
                 end;
               end);
+            Sleep(5); // Effect
           end;
           FreeAndNil(FoldersAndFiles);
 
@@ -1236,13 +1266,13 @@ begin
                 else
                   L.ImageIndex := 2;
               end);
+            Sleep(5); // Effect
           end;
           FreeAndNil(FoldersAndFiles);
 
           Synchronize(
             procedure
             begin
-              frm_ShareFiles.ShareFiles_ListView.Enabled := true;
               frm_ShareFiles.Directory_Edit.Enabled := true;
             end);
 
@@ -1294,10 +1324,9 @@ begin
 
           s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
 
-          FileToUpload := TMemoryStream.Create;
-          FileToUpload.LoadFromFile(s2);
-
-          frm_Main.Files_Socket.Socket.SendText('<|SIZE|>' + intToStr(FileToUpload.Size) + '<<|' + MemoryStreamToString(FileToUpload));
+          FileToUpload := TFileStream.Create(s2, fmOpenRead);
+          frm_Main.Files_Socket.Socket.SendText('<|SIZE|>' + intToStr(FileToUpload.Size) + '<<|');
+          frm_Main.Files_Socket.Socket.SendStream(FileToUpload);
         end;
 
       end;
@@ -1341,21 +1370,8 @@ begin
         if (Pos('<|GETFULLSCREENSHOT|>', s) > 0) then
         begin
 
-          if (Pos('<|NEWRESOLUTION|>', s) > 0) then
-          begin
-            s2 := s;
-            Delete(s2, 1, Pos('<|NEWRESOLUTION|>', s2) + 16);
-
-            ResolutionWidth := StrToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
-            Delete(s2, 1, Pos('<|>', s2) + 2);
-
-            ResolutionHeight := StrToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
-          end
-          else
-          begin
-            ResolutionWidth := Screen.Width;
-            ResolutionHeight := Screen.Height;
-          end;
+          ResolutionWidth := Screen.Width;
+          ResolutionHeight := Screen.Height;
 
           frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|RESOLUTION|>' + IntToStr(Screen.Width) + '<|>' + IntToStr(Screen.Height) + '<<|');
 
@@ -1488,6 +1504,14 @@ begin
     end;
     Sleep(5); // Avoids using 100% CPU
   end;
+
+  FreeAndNil(MyFirstBmp);
+  FreeAndNil(UnPackStream);
+  FreeAndNil(MyTempStream);
+  FreeAndNil(MySecondBmp);
+  FreeAndNil(MyCompareBmp);
+  FreeAndNil(PackStream);
+
 end;
 
 
