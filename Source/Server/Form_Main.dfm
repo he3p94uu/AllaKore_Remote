@@ -3,7 +3,7 @@ object frm_Main: Tfrm_Main
   Top = 125
   Width = 758
   Height = 589
-  Caption = 'AllaKore Remote - Server'
+  Caption = 'AllaKore Remote - Server (BETA)'
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
