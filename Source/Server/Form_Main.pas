@@ -152,6 +152,33 @@ begin
   FreeOnTerminate := True;
 end;
 
+
+
+// Get current Version
+function GetAppVersionStr: string;
+type
+  TBytes = array of Byte;
+var
+  Exe: string;
+  Size, Handle: DWORD;
+  Buffer: TBytes;
+  FixedPtr: PVSFixedFileInfo;
+begin
+  Exe := ParamStr(0);
+  Size := GetFileVersionInfoSize(PChar(Exe), Handle);
+  if Size = 0 then
+    RaiseLastOSError;
+  SetLength(Buffer, Size);
+  if not GetFileVersionInfo(PChar(Exe), Handle, Size, Buffer) then
+    RaiseLastOSError;
+  if not VerQueryValue(Buffer, '\', Pointer(FixedPtr), Size) then
+    RaiseLastOSError;
+  Result := Format('%d.%d.%d.%d', [LongRec(FixedPtr.dwFileVersionMS).Hi,  //major
+    LongRec(FixedPtr.dwFileVersionMS).Lo,  //minor
+    LongRec(FixedPtr.dwFileVersionLS).Hi,  //release
+    LongRec(FixedPtr.dwFileVersionLS).Lo]) //build
+end;
+
 function GenerateID(): string;
 var
   i: Integer;
@@ -262,6 +289,8 @@ procedure Tfrm_Main.FormCreate(Sender: TObject);
 begin
   Main_IdTCPServer.DefaultPort := Port;
   Main_IdTCPServer.Active := true;
+
+  Caption := Caption + ' - ' + GetAppVersionStr;
 end;
 
 procedure Tfrm_Main.Main_IdTCPServerExecute(AThread: TIdPeerThread);
@@ -613,13 +642,28 @@ begin
   while i < Connections_ListView.Items.Count do
   begin
     try
+
+      // Request Ping
       (Connections_ListView.Items.Item[i].SubItems.Objects[0] as TThreadConnection_Main).AThread_Main.Connection.Write('<|PING|>');
       (Connections_ListView.Items.Item[i].SubItems.Objects[0] as TThreadConnection_Main).StartPing := GetTickCount;
 
+
+      // Check if Target ID exists, if not, delete it
+      if not (Connections_ListView.Items.Item[i].SubItems[3] = '') then
+      begin
+        if not (CheckIDExists(Connections_ListView.Items.Item[i].SubItems[3])) then
+        begin
+          Connections_ListView.Items.Item[i].Delete;
+          Dec(i);
+        end;
+
+      end;
+
       Inc(i);
     except
+      // Any error, delete
       Connections_ListView.Items.Item[i].Delete;
-      Dec(i);
+
     end;
   end;
 
