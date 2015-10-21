@@ -100,6 +100,8 @@ begin
   // The keys programmed here, may not match the keys on your keyboard. I recommend to undertake adaptation.
   try
 
+
+
      { Combo }
     if (Active) then
     begin
@@ -109,7 +111,7 @@ begin
         if (GetKeyState(VK_MENU) < 0) then
         begin
           AltPressed := true;
-          SendSocketKeys('<|ALTDOWN|>');
+          frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|ALTDOWN|>');
         end;
       end
       else
@@ -117,7 +119,7 @@ begin
         if (GetKeyState(VK_MENU) > -1) then
         begin
           AltPressed := false;
-          SendSocketKeys('<|ALTUP|>');
+          frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|ALTUP|>');
         end;
       end;
 
@@ -128,7 +130,7 @@ begin
         if (GetKeyState(VK_CONTROL) < 0) then
         begin
           CtrlPressed := true;
-          SendSocketKeys('<|CTRLDOWN|>');
+          frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|CTRLDOWN|>');
         end;
       end
       else
@@ -136,7 +138,7 @@ begin
         if (GetKeyState(VK_CONTROL) > -1) then
         begin
           CtrlPressed := false;
-          SendSocketKeys('<|CTRLUP|>');
+          frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|CTRLUP|>');
         end;
       end;
 
@@ -147,7 +149,7 @@ begin
         if (GetKeyState(VK_SHIFT) < 0) then
         begin
           ShiftPressed := true;
-          SendSocketKeys('<|SHIFTDOWN|>');
+          frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|SHIFTDOWN|>');
         end;
       end
       else
@@ -155,14 +157,10 @@ begin
         if (GetKeyState(VK_SHIFT) > -1) then
         begin
           ShiftPressed := false;
-          SendSocketKeys('<|SHIFTUP|>');
+          frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|SHIFTUP|>');
         end;
       end;
     end;
-
-
-
-
 
     for i := 8 to 228 do
     begin
