@@ -583,17 +583,17 @@ begin
 
 
   // Define Host, Port and Timeout of Sockets
-  Main_Socket.Host := Host;
-  Main_Socket.Port := Port;
+  Main_Socket.Host := _Host;
+  Main_Socket.Port := _Port;
 
-  Desktop_Socket.Host := Host;
-  Desktop_Socket.Port := Port;
+  Desktop_Socket.Host := _Host;
+  Desktop_Socket.Port := _Port;
 
-  Keyboard_Socket.Host := Host;
-  Keyboard_Socket.Port := Port;
+  Keyboard_Socket.Host := _Host;
+  Keyboard_Socket.Port := _Port;
 
-  Files_Socket.Host := Host;
-  Files_Socket.Port := Port;
+  Files_Socket.Host := _Host;
+  Files_Socket.Port := _Port;
   //
   ResolutionTargetWidth := 986;
   ResolutionTargetHeight := 600;
@@ -1111,14 +1111,14 @@ begin
 
                   Chat_RichEdit.SelStart := Chat_RichEdit.GetTextLen;
                   Chat_RichEdit.SelAttributes.Color := clWhite;
-                  Chat_RichEdit.SelText := '   •   ' + s2;
+                  Chat_RichEdit.SelText := '   Â•   ' + s2;
                 end
                 else
                 begin
                   Chat_RichEdit.SelStart := Chat_RichEdit.GetTextLen;
                   Chat_RichEdit.SelAttributes.Style := [];
                   Chat_RichEdit.SelAttributes.Color := clWhite;
-                  Chat_RichEdit.SelText := #13 + '   •   ' + s2;
+                  Chat_RichEdit.SelText := #13 + '   Â•   ' + s2;
                 end;
 
                 SendMessage(Chat_RichEdit.Handle, WM_VSCROLL, SB_BOTTOM, 0);
