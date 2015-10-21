@@ -576,20 +576,9 @@ begin
 end;
 
 procedure Tfrm_Main.FormCreate(Sender: TObject);
-var
-  _Host: Ansistring;
-  _Port: Integer;
 begin
   // Insert version on Caption of the Form
   Caption := Caption + ' - ' + GetAppVersionStr;
-
-  //Reads two exe params - host and port. If not supplied uses constants. to use: client.exe HOST PORT, for ex. client.exe 192.168.16.201 3398
-  if ParamStr(1)<>'' then
-    _Host := ParamStr(1)
-  else
-    _Host := Host;
-
-  _Port := StrToIntDef(ParamStr(2), Port);
 
 
 
