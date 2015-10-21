@@ -61,6 +61,7 @@ end;
 
 procedure Tfrm_ShareFiles.GoToDirectory(Directory: string);
 begin
+  ShareFiles_ListView.Enabled := false;
   Directory_Edit.Enabled := false;
   if not (Directory[Length(Directory)] = '\') then
   begin
@@ -93,7 +94,7 @@ procedure Tfrm_ShareFiles.EnterInDirectory;
 var
   Directory: string;
 begin
-  if (ShareFiles_ListView.ItemIndex = -1) or not (Directory_Edit.Enabled) then
+  if (ShareFiles_ListView.ItemIndex = -1) then
     Exit;
 
   if (ShareFiles_ListView.Selected.ImageIndex = 0) or (ShareFiles_ListView.Selected.ImageIndex = 1) then
@@ -129,11 +130,13 @@ begin
   OpenDialog1.FileName := '';
   if (OpenDialog1.Execute()) then
   begin
+    //FileStream := TMemoryStream.Create;
+    //FileStream.LoadFromFile(OpenDialog1.FileName);
 
     FileStream := TFileStream.Create(OpenDialog1.FileName, fmOpenRead);
     FileName := ExtractFileName(OpenDialog1.FileName);
     Upload_ProgressBar.Max := FileStream.Size;
-
+//    frm_Main.Files_Socket.Socket.SendText('<|DIRECTORYTOSAVE|>' + Directory_Edit.Text + FileName + '<|><|SIZE|>' + intToStr(FileStream.Size) + '<<|' + MemoryStreamToString(FileStream));
     frm_Main.Files_Socket.Socket.SendText('<|DIRECTORYTOSAVE|>' + Directory_Edit.Text + FileName + '<|><|SIZE|>' + intToStr(FileStream.Size) + '<<|');
     FileStream.Position := 0;
     frm_Main.Files_Socket.Socket.SendStream(FileStream);
