@@ -663,7 +663,6 @@ begin
     except
       // Any error, delete
       Connections_ListView.Items.Item[i].Delete;
-
     end;
   end;
 

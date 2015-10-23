@@ -1302,7 +1302,6 @@ begin
               begin
                 Upload_ProgressBar.Position := 0;
                 Upload_BitBtn.Enabled := True;
-                ShareFiles_ListView.Enabled := false;
                 Directory_Edit.Enabled := false;
                 frm_ShareFiles.SizeUpload_Label.Caption := 'Size: 0 B / 0 B';
               end;
