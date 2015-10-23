@@ -111,7 +111,7 @@ begin
         if (GetKeyState(VK_MENU) < 0) then
         begin
           AltPressed := true;
-          frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|ALTDOWN|>');
+          SendSocketKeys('<|ALTDOWN|>');
         end;
       end
       else
@@ -119,7 +119,7 @@ begin
         if (GetKeyState(VK_MENU) > -1) then
         begin
           AltPressed := false;
-          frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|ALTUP|>');
+          SendSocketKeys('<|ALTUP|>');
         end;
       end;
 
@@ -130,7 +130,7 @@ begin
         if (GetKeyState(VK_CONTROL) < 0) then
         begin
           CtrlPressed := true;
-          frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|CTRLDOWN|>');
+          SendSocketKeys('<|CTRLDOWN|>');
         end;
       end
       else
@@ -138,7 +138,7 @@ begin
         if (GetKeyState(VK_CONTROL) > -1) then
         begin
           CtrlPressed := false;
-          frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|CTRLUP|>');
+          SendSocketKeys('<|CTRLUP|>');
         end;
       end;
 
@@ -149,7 +149,7 @@ begin
         if (GetKeyState(VK_SHIFT) < 0) then
         begin
           ShiftPressed := true;
-          frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|SHIFTDOWN|>');
+          SendSocketKeys('<|SHIFTDOWN|>');
         end;
       end
       else
@@ -157,7 +157,7 @@ begin
         if (GetKeyState(VK_SHIFT) > -1) then
         begin
           ShiftPressed := false;
-          frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|SHIFTUP|>');
+          SendSocketKeys('<|SHIFTUP|>');
         end;
       end;
     end;
