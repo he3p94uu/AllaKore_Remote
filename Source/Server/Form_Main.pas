@@ -185,6 +185,7 @@ var
   ID: string;
   Exists: Boolean;
 begin
+
   Exists := false;
 
   while true do
@@ -211,7 +212,6 @@ begin
   end;
 
   Result := ID;
-
 end;
 
 function GeneratePassword(): string;
@@ -232,7 +232,6 @@ begin
 
     Inc(i);
   end;
-
   Result := frm_Main.Connections_ListView.Items.Item[i];
 end;
 
@@ -241,6 +240,7 @@ var
   i: Integer;
   Exists: Boolean;
 begin
+
   Exists := false;
   i := 0;
   while i < frm_Main.Connections_ListView.Items.Count do
@@ -253,7 +253,6 @@ begin
 
     Inc(i);
   end;
-
   Result := Exists;
 end;
 
@@ -262,6 +261,7 @@ var
   i: Integer;
   Correct: Boolean;
 begin
+
   Correct := false;
   i := 0;
   while i < frm_Main.Connections_ListView.Items.Count do
@@ -276,6 +276,7 @@ begin
   end;
 
   Result := Correct;
+
 end;
 
 procedure Tfrm_Main.ApplicationEvents1Exception(Sender: TObject; E: Exception);
@@ -309,6 +310,11 @@ var
   ThreadFiles: TThreadConnection_Files;
 begin
   inherited;
+
+  ThreadMain := nil;
+  ThreadDesktop := nil;
+  ThreadKeyboard := nil;
+  ThreadFiles := nil;
 
   while AThread_Define.Connection.Connected do
   begin
@@ -380,6 +386,8 @@ procedure TThreadConnection_Main.AddItems;
 var
   L: TListItem;
 begin
+  L := nil;
+
   ID := GenerateID;
   Password := GeneratePassword;
   L := frm_Main.Connections_ListView.Items.Add;
@@ -399,6 +407,9 @@ var
   L, L2: TListItem;
 begin
   inherited;
+
+  L := nil;
+  L2 := nil;
 
   Synchronize(AddItems);
 
@@ -512,13 +523,13 @@ begin
     end;
     Sleep(5);
   end;
-
 end;
 
 procedure TThreadConnection_Main.InsertPing;
 var
   L: TListItem;
 begin
+  L := nil;
 
   L := frm_Main.Connections_ListView.FindCaption(0, IntToStr(AThread_Main.Handle), false, true, false);
   if (L <> nil) then
@@ -530,6 +541,9 @@ procedure TThreadConnection_Main.InsertTargetID;
 var
   L, L2: TListItem;
 begin
+  L := nil;
+  L2 := nil;
+
   L := frm_Main.Connections_ListView.FindCaption(0, IntToStr(AThread_Main.Handle), false, true, false);
   if (L <> nil) then
   begin
@@ -538,7 +552,6 @@ begin
     L.SubItems[3] := TargetID;
     L2.SubItems[3] := ID;
   end;
-
 end;
 
 { TThreadConnection_Desktop }
@@ -549,6 +562,8 @@ var
   L: TListItem;
 begin
   inherited;
+
+  L := nil;
 
   L := FindListItemID(MyID);
   L.SubItems.Objects[1] := TObject(Self);
@@ -566,7 +581,6 @@ begin
     end;
     Sleep(5);
   end;
-
 end;
 
 // The connection type is the Keyboard Remote
@@ -577,6 +591,7 @@ var
 begin
   inherited;
 
+  L := nil;
   L := FindListItemID(MyID);
   L.SubItems.Objects[2] := TObject(Self);
 
@@ -593,7 +608,6 @@ begin
     end;
     Sleep(5);
   end;
-
 end;
 
 { TThreadConnection_Files }
@@ -604,6 +618,8 @@ var
   L: TListItem;
 begin
   inherited;
+
+  L := nil;
 
   L := FindListItemID(MyID);
   L.SubItems.Objects[3] := TObject(Self);
@@ -621,7 +637,6 @@ begin
     end;
     Sleep(5);
   end;
-
 end;
 
 procedure Tfrm_Main.Main_IdTCPServerConnect(AThread: TIdPeerThread);
@@ -665,7 +680,6 @@ begin
       Connections_ListView.Items.Item[i].Delete;
     end;
   end;
-
 end;
 
 end.

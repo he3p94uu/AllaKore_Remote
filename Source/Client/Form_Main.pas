@@ -183,23 +183,31 @@ function GetWallpaperDirectory: string;
 var
   Reg: TRegistry;
 begin
-  Reg := TRegistry.Create;
-  Reg.RootKey := HKEY_CURRENT_USER;
-  Reg.OpenKey('Control Panel\Desktop', false);
-  Result := Reg.ReadString('Wallpaper');
-  FreeAndNil(Reg);
+  Reg := nil;
+  try
+    Reg := TRegistry.Create;
+    Reg.RootKey := HKEY_CURRENT_USER;
+    Reg.OpenKey('Control Panel\Desktop', false);
+    Result := Reg.ReadString('Wallpaper');
+  finally
+    FreeAndNil(Reg);
+  end;
 end;
 
 procedure ChangeWallpaper(Directory: string);
 var
   Reg: TRegistry;
 begin
-  Reg := TRegistry.Create;
-  Reg.RootKey := HKEY_CURRENT_USER;
-  Reg.OpenKey('Control Panel\Desktop', false);
-  Reg.WriteString('Wallpaper', Directory);
-  FreeAndNil(Reg);
-  SystemParametersInfo(SPI_SETDESKWALLPAPER, 0, nil, SPIF_SENDWININICHANGE);
+  Reg := nil;
+  try
+    Reg := TRegistry.Create;
+    Reg.RootKey := HKEY_CURRENT_USER;
+    Reg.OpenKey('Control Panel\Desktop', false);
+    Reg.WriteString('Wallpaper', Directory);
+    SystemParametersInfo(SPI_SETDESKWALLPAPER, 0, nil, SPIF_SENDWININICHANGE);
+  finally
+    FreeAndNil(Reg);
+  end;
 end;
 
 procedure Tfrm_Main.About_BitBtnClick(Sender: TObject);
@@ -381,6 +389,8 @@ begin
   Keyboard_Socket.Close;
   Files_Socket.Close;
 
+  Viewer := false;
+
   // Restore Wallpaper
   if (Accessed) then
   begin
@@ -458,13 +468,19 @@ var
   count, outcount: longint;
 begin
   Result := false;
+
+  InputStream := nil;
+  OutputStream := nil;
+  inbuffer := nil;
+  outbuffer := nil;
+
   if not assigned(SrcStream) then
     exit;
 
-  InputStream := TMemoryStream.Create;
-  OutputStream := TMemoryStream.Create;
-
   try
+    InputStream := TMemoryStream.Create;
+    OutputStream := TMemoryStream.Create;
+
     InputStream.LoadFromStream(SrcStream);
     count := InputStream.Size;
     getmem(inbuffer, count);
@@ -475,8 +491,8 @@ begin
     SrcStream.LoadFromStream(OutputStream);
     Result := true;
   finally
-    InputStream.Free;
-    OutputStream.Free;
+    FreeAndNil(InputStream);
+    FreeAndNil(OutputStream);
     FreeMem(inbuffer, count);
     FreeMem(outbuffer, outcount);
   end;
@@ -490,12 +506,19 @@ var
   count, outcount: longint;
 begin
   result := false;
+
+  InputStream := nil;
+  OutputStream := nil;
+  inbuffer := nil;
+  outbuffer := nil;
+
   if not assigned(SrcStream) then
     exit;
 
-  InputStream := TMemoryStream.Create;
-  OutputStream := TMemoryStream.Create;
   try
+    InputStream := TMemoryStream.Create;
+    OutputStream := TMemoryStream.Create;
+
     InputStream.LoadFromStream(SrcStream);
     count := InputStream.Size;
     getmem(inbuffer, count);
@@ -506,8 +529,8 @@ begin
     SrcStream.LoadFromStream(OutputStream);
     result := true;
   finally
-    InputStream.Free;
-    OutputStream.Free;
+    FreeAndNil(InputStream);
+    FreeAndNil(OutputStream);
     FreeMem(inbuffer, count);
     FreeMem(outbuffer, outcount);
   end;
@@ -792,6 +815,9 @@ var
   Extension: string;
 begin
   inherited;
+
+  FoldersAndFiles := nil;
+  FileToUpload := nil;
 
   while Socket.Connected do
   begin
@@ -1350,143 +1376,41 @@ var
 begin
   inherited;
 
-  MyFirstBmp := TMemoryStream.Create;
-  UnPackStream := TMemoryStream.Create;
-  MyTempStream := TMemoryStream.Create;
-  MySecondBmp := TMemoryStream.Create;
-  MyCompareBmp := TMemoryStream.Create;
-  PackStream := TMemoryStream.Create;
-  ReceivingBmp := false;
+  MyFirstBmp := nil;
+  MySecondBmp := nil;
+  MyCompareBmp := nil;
+  UnPackStream := nil;
+  MyTempStream := nil;
+  PackStream := nil;
 
-  while Socket.Connected do
-  begin
-    try
-      if (Socket.ReceiveLength > 0) then
-      begin
+  try
 
-        s := Socket.ReceiveText;
+    MyFirstBmp := TMemoryStream.Create;
+    UnPackStream := TMemoryStream.Create;
+    MyTempStream := TMemoryStream.Create;
+    MySecondBmp := TMemoryStream.Create;
+    MyCompareBmp := TMemoryStream.Create;
+    PackStream := TMemoryStream.Create;
+    ReceivingBmp := false;
 
-        if (Pos('<|GETFULLSCREENSHOT|>', s) > 0) then
+    while Socket.Connected do
+    begin
+      try
+        if (Socket.ReceiveLength > 0) then
         begin
 
-          ResolutionWidth := Screen.Width;
-          ResolutionHeight := Screen.Height;
+          s := Socket.ReceiveText;
 
-          frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|RESOLUTION|>' + IntToStr(Screen.Width) + '<|>' + IntToStr(Screen.Height) + '<<|');
-
-          ReceiveBmpSize := 0;
-          MyFirstBmp.Clear;
-          UnPackStream.Clear;
-          MyTempStream.Clear;
-          MySecondBmp.Clear;
-          MyCompareBmp.Clear;
-          PackStream.Clear;
-          ReceivingBmp := false;
-
-          Synchronize(
-            procedure
-            begin
-              GetScreenToBmp(false, MyFirstBmp, ResolutionWidth, ResolutionHeight);
-            end);
-
-          MyFirstBmp.Position := 0;
-          PackStream.LoadFromStream(MyFirstBmp);
-
-          CompressStream(PackStream);
-          CompressStream(PackStream);
-          PackStream.Position := 0;
-          SendBMPSize := PackStream.Size;
-
-          Socket.SendText('<|SIZE|>' + intToStr(SendBMPSize) + '<<|' + MemoryStreamToString(PackStream));
-        end;
-
-        if (Pos('<|GETPARTSCREENSHOT|>', s) > 0) then
-        begin
-          Synchronize(
-            procedure
-            begin
-              CompareStream(MyFirstBmp, MySecondBmp, MyCompareBmp, ResolutionWidth, ResolutionHeight);
-            end);
-
-          MyCompareBmp.Position := 0;
-          PackStream.LoadFromStream(MyCompareBmp);
-
-          CompressStream(PackStream);
-          CompressStream(PackStream);
-          PackStream.Position := 0;
-          SendBMPSize := PackStream.Size;
-          Socket.SendText('<|SIZE|>' + intToStr(SendBMPSize) + '<<|' + MemoryStreamToString(PackStream));
-        end;
-
-        if not (ReceivingBmp) then
-        begin
-          if (Pos('<|SIZE|>', s) > 0) then
-          begin
-            s2 := s;
-            Delete(s2, 1, Pos('<|SIZE|>', s2) + 7);
-            s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
-
-            ReceiveBmpSize := StrToInt(s2);
-
-            Delete(s, 1, Pos('<<|', s) + 2);
-            ReceivingBmp := true;
-
-            Synchronize(
-              procedure
-              begin
-                frm_RemoteScreen.Caption := 'AllaKore Remote - ' + GetSize(ReceiveBmpSize);
-              end);
-          end;
-        end;
-
-        if (Length(s) > 0) and (ReceivingBmp) then
-        begin
-          MyTempStream.Write(AnsiString(s)[1], Length(s));
-
-          if (MyTempStream.Size >= ReceiveBmpSize) then
+          if (Pos('<|GETFULLSCREENSHOT|>', s) > 0) then
           begin
 
-            Socket.SendText('<|GETPARTSCREENSHOT|>');
+            ResolutionWidth := Screen.Width;
+            ResolutionHeight := Screen.Height;
 
-            MyTempStream.Position := 0;
-            UnPackStream.Clear;
-            UnPackStream.LoadFromStream(MyTempStream);
-            DeCompressStream(UnPackStream);
-            DeCompressStream(UnPackStream);
-
-            if (MyFirstBmp.Size = 0) then
-            begin
-              MyFirstBmp.CopyFrom(UnPackStream, 0);
-              MyFirstBmp.Position := 0;
-
-              Synchronize(
-                procedure
-                begin
-                  frm_RemoteScreen.Screen_Image.Picture.Bitmap.LoadFromStream(MyFirstBmp);
-                  if (frm_RemoteScreen.Resize_CheckBox.Checked) then
-                    ResizeBmp(frm_RemoteScreen.Screen_Image.Picture.Bitmap, frm_RemoteScreen.Screen_Image.Width, frm_RemoteScreen.Screen_Image.Height);
-                  frm_RemoteScreen.Caption := 'AllaKore Remote';
-                end);
-
-            end
-            else
-            begin
-              MyCompareBmp.Clear;
-              MySecondBmp.Clear;
-
-              MyCompareBmp.CopyFrom(UnPackStream, 0);
-              ResumeStream(MyFirstBmp, MySecondBmp, MyCompareBmp);
-
-              Synchronize(
-                procedure
-                begin
-                  frm_RemoteScreen.Screen_Image.Picture.Bitmap.LoadFromStream(MySecondBmp);
-                  if (frm_RemoteScreen.Resize_CheckBox.Checked) then
-                    ResizeBmp(frm_RemoteScreen.Screen_Image.Picture.Bitmap, frm_RemoteScreen.Screen_Image.Width, frm_RemoteScreen.Screen_Image.Height);
-                end);
-            end;
+            frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|RESOLUTION|>' + IntToStr(Screen.Width) + '<|>' + IntToStr(Screen.Height) + '<<|');
 
             ReceiveBmpSize := 0;
+            MyFirstBmp.Clear;
             UnPackStream.Clear;
             MyTempStream.Clear;
             MySecondBmp.Clear;
@@ -1494,22 +1418,138 @@ begin
             PackStream.Clear;
             ReceivingBmp := false;
 
+            Synchronize(
+              procedure
+              begin
+                GetScreenToBmp(false, MyFirstBmp, ResolutionWidth, ResolutionHeight);
+              end);
+
+            MyFirstBmp.Position := 0;
+            PackStream.LoadFromStream(MyFirstBmp);
+
+            CompressStream(PackStream);
+            CompressStream(PackStream);
+
+            PackStream.Position := 0;
+            SendBMPSize := PackStream.Size;
+
+            Socket.SendText('<|SIZE|>' + intToStr(SendBMPSize) + '<<|' + MemoryStreamToString(PackStream));
+          end;
+
+          if (Pos('<|GETPARTSCREENSHOT|>', s) > 0) then
+          begin
+            Synchronize(
+              procedure
+              begin
+                CompareStream(MyFirstBmp, MySecondBmp, MyCompareBmp, ResolutionWidth, ResolutionHeight);
+              end);
+
+            MyCompareBmp.Position := 0;
+            PackStream.LoadFromStream(MyCompareBmp);
+
+            CompressStream(PackStream);
+            CompressStream(PackStream);
+
+            PackStream.Position := 0;
+            SendBMPSize := PackStream.Size;
+            Socket.SendText('<|SIZE|>' + intToStr(SendBMPSize) + '<<|' + MemoryStreamToString(PackStream));
+          end;
+
+          if not (ReceivingBmp) then
+          begin
+            if (Pos('<|SIZE|>', s) > 0) then
+            begin
+              s2 := s;
+              Delete(s2, 1, Pos('<|SIZE|>', s2) + 7);
+              s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
+
+              ReceiveBmpSize := StrToInt(s2);
+
+              Delete(s, 1, Pos('<<|', s) + 2);
+              ReceivingBmp := true;
+
+              Synchronize(
+                procedure
+                begin
+                  frm_RemoteScreen.Caption := 'AllaKore Remote - ' + GetSize(ReceiveBmpSize);
+                end);
+            end;
+          end;
+
+          if (Length(s) > 0) and (ReceivingBmp) then
+          begin
+            MyTempStream.Write(AnsiString(s)[1], Length(s));
+
+            if (MyTempStream.Size >= ReceiveBmpSize) then
+            begin
+
+              Socket.SendText('<|GETPARTSCREENSHOT|>');
+
+              MyTempStream.Position := 0;
+              UnPackStream.Clear;
+              UnPackStream.LoadFromStream(MyTempStream);
+              DeCompressStream(UnPackStream);
+              DeCompressStream(UnPackStream);
+
+              if (MyFirstBmp.Size = 0) then
+              begin
+                MyFirstBmp.CopyFrom(UnPackStream, 0);
+                MyFirstBmp.Position := 0;
+
+                Synchronize(
+                  procedure
+                  begin
+                    frm_RemoteScreen.Screen_Image.Picture.Bitmap.LoadFromStream(MyFirstBmp);
+                    if (frm_RemoteScreen.Resize_CheckBox.Checked) then
+                      ResizeBmp(frm_RemoteScreen.Screen_Image.Picture.Bitmap, frm_RemoteScreen.Screen_Image.Width, frm_RemoteScreen.Screen_Image.Height);
+                    frm_RemoteScreen.Caption := 'AllaKore Remote';
+                  end);
+
+              end
+              else
+              begin
+                MyCompareBmp.Clear;
+                MySecondBmp.Clear;
+
+                MyCompareBmp.CopyFrom(UnPackStream, 0);
+                ResumeStream(MyFirstBmp, MySecondBmp, MyCompareBmp);
+
+                Synchronize(
+                  procedure
+                  begin
+                    frm_RemoteScreen.Screen_Image.Picture.Bitmap.LoadFromStream(MySecondBmp);
+                    if (frm_RemoteScreen.Resize_CheckBox.Checked) then
+                      ResizeBmp(frm_RemoteScreen.Screen_Image.Picture.Bitmap, frm_RemoteScreen.Screen_Image.Width, frm_RemoteScreen.Screen_Image.Height);
+                  end);
+              end;
+
+              ReceiveBmpSize := 0;
+              UnPackStream.Clear;
+              MyTempStream.Clear;
+              MySecondBmp.Clear;
+              MyCompareBmp.Clear;
+              PackStream.Clear;
+              ReceivingBmp := false;
+
+            end;
+
           end;
 
         end;
-
+      except
       end;
-    except
+      Sleep(5); // Avoids using 100% CPU
     end;
-    Sleep(5); // Avoids using 100% CPU
-  end;
 
-  FreeAndNil(MyFirstBmp);
-  FreeAndNil(UnPackStream);
-  FreeAndNil(MyTempStream);
-  FreeAndNil(MySecondBmp);
-  FreeAndNil(MyCompareBmp);
-  FreeAndNil(PackStream);
+  finally
+
+    FreeAndNil(MyFirstBmp);
+    FreeAndNil(UnPackStream);
+    FreeAndNil(MyTempStream);
+    FreeAndNil(MySecondBmp);
+    FreeAndNil(MyCompareBmp);
+    FreeAndNil(PackStream);
+  end;
 
 end;
 
@@ -1523,96 +1563,104 @@ var
   FileStream: TFileStream;
 begin
   inherited;
-  ReceivingFile := false;
 
-  while Socket.Connected do
-  begin
-    try
-      if (Socket.ReceiveLength > 0) then
-      begin
-        s := Socket.ReceiveText;
+  try
 
-        if not (ReceivingFile) then
+    ReceivingFile := false;
+    FileStream := nil;
+
+    while Socket.Connected do
+    begin
+      try
+        if (Socket.ReceiveLength > 0) then
         begin
+          s := Socket.ReceiveText;
 
-          if (Pos('<|DIRECTORYTOSAVE|>', s) > 0) then
+          if not (ReceivingFile) then
           begin
-            s2 := s;
-            Delete(s2, 1, Pos('<|DIRECTORYTOSAVE|>', s2) + 18);
 
-            s2 := Copy(s2, 1, Pos('<|>', s2) - 1);
+            if (Pos('<|DIRECTORYTOSAVE|>', s) > 0) then
+            begin
+              s2 := s;
+              Delete(s2, 1, Pos('<|DIRECTORYTOSAVE|>', s2) + 18);
 
-            frm_ShareFiles.DirectoryToSaveFile := s2;
+              s2 := Copy(s2, 1, Pos('<|>', s2) - 1);
+
+              frm_ShareFiles.DirectoryToSaveFile := s2;
+            end;
+
+            if (Pos('<|SIZE|>', s) > 0) then
+            begin
+              s2 := s;
+              Delete(s2, 1, Pos('<|SIZE|>', s2) + 7);
+              s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
+
+              FileSize := StrToInt(s2);
+              FileStream := TFileStream.Create(frm_ShareFiles.DirectoryToSaveFile + '.tmp', fmCreate or fmOpenReadWrite);
+
+              if (frm_Main.Viewer) then
+                Synchronize(
+                  procedure
+                  begin
+                    frm_ShareFiles.Download_ProgressBar.Max := FileSize;
+                    frm_ShareFiles.Download_ProgressBar.Position := 0;
+                    frm_ShareFiles.SizeDownload_Label.Caption := 'Size: ' + getSize(FileStream.Size) + ' / ' + GetSize(FileSize);
+                  end);
+
+              Delete(s, 1, Pos('<<|', s) + 2);
+              ReceivingFile := true;
+            end;
           end;
 
-          if (Pos('<|SIZE|>', s) > 0) then
+          if (Length(s) > 0) and (ReceivingFile) then
           begin
-            s2 := s;
-            Delete(s2, 1, Pos('<|SIZE|>', s2) + 7);
-            s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
-
-            FileSize := StrToInt(s2);
-            FileStream := TFileStream.Create(frm_ShareFiles.DirectoryToSaveFile + '.tmp', fmCreate or fmOpenReadWrite);
-
+            FileStream.Write(AnsiString(s)[1], Length(s));
             if (frm_Main.Viewer) then
               Synchronize(
                 procedure
                 begin
-                  frm_ShareFiles.Download_ProgressBar.Max := FileSize;
-                  frm_ShareFiles.Download_ProgressBar.Position := 0;
+                  frm_ShareFiles.Download_ProgressBar.Position := FileStream.Size;
                   frm_ShareFiles.SizeDownload_Label.Caption := 'Size: ' + getSize(FileStream.Size) + ' / ' + GetSize(FileSize);
-                end);
-
-            Delete(s, 1, Pos('<<|', s) + 2);
-            ReceivingFile := true;
-          end;
-        end;
-
-        if (Length(s) > 0) and (ReceivingFile) then
-        begin
-          FileStream.Write(AnsiString(s)[1], Length(s));
-          if (frm_Main.Viewer) then
-            Synchronize(
-              procedure
-              begin
-                frm_ShareFiles.Download_ProgressBar.Position := FileStream.Size;
-                frm_ShareFiles.SizeDownload_Label.Caption := 'Size: ' + getSize(FileStream.Size) + ' / ' + GetSize(FileSize);
-              end)
-          else
-            frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|UPLOADPROGRESS|>' + intToStr(FileStream.Size) + '<<|');
-
-          if (FileStream.Size = FileSize) then
-          begin
-            FreeAndNil(FileStream);
-
-            if (FileExists(frm_ShareFiles.DirectoryToSaveFile)) then
-              DeleteFile(frm_ShareFiles.DirectoryToSaveFile);
-
-            RenameFile(frm_ShareFiles.DirectoryToSaveFile + '.tmp', frm_ShareFiles.DirectoryToSaveFile);
-
-            if not (frm_Main.Viewer) then
-              frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|UPLOADCOMPLETE|>')
+                end)
             else
-              Synchronize(
-                procedure
-                begin
-                  frm_ShareFiles.Download_ProgressBar.Position := 0;
-                  frm_ShareFiles.Download_BitBtn.Enabled := true;
-                  frm_ShareFiles.SizeDownload_Label.Caption := 'Size: 0 B / 0 B';
-                  Application.MessageBox('Download complete!', 'AllaKore Remote - Share Files', 64);
-                end);
+              frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|UPLOADPROGRESS|>' + intToStr(FileStream.Size) + '<<|');
 
-            ReceivingFile := False;
+            if (FileStream.Size = FileSize) then
+            begin
+              FreeAndNil(FileStream);
+
+              if (FileExists(frm_ShareFiles.DirectoryToSaveFile)) then
+                DeleteFile(frm_ShareFiles.DirectoryToSaveFile);
+
+              RenameFile(frm_ShareFiles.DirectoryToSaveFile + '.tmp', frm_ShareFiles.DirectoryToSaveFile);
+
+              if not (frm_Main.Viewer) then
+                frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|UPLOADCOMPLETE|>')
+              else
+                Synchronize(
+                  procedure
+                  begin
+                    frm_ShareFiles.Download_ProgressBar.Position := 0;
+                    frm_ShareFiles.Download_BitBtn.Enabled := true;
+                    frm_ShareFiles.SizeDownload_Label.Caption := 'Size: 0 B / 0 B';
+                    Application.MessageBox('Download complete!', 'AllaKore Remote - Share Files', 64);
+                  end);
+
+              ReceivingFile := False;
+            end;
+
           end;
 
         end;
 
+      except
       end;
 
-    except
+      Sleep(5); // Avoids using 100% CPU
     end;
 
-    Sleep(5); // Avoids using 100% CPU
+  finally
+    FreeAndNil(FileStream);
   end;
 
 end;
