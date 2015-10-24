@@ -1077,7 +1077,7 @@ begin
           Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0);
         end;
 
-        if (Pos('<|SETMOUSMIDDLEDOWN|>', s) > 0) then
+        if (Pos('<|SETMOUSEMIDDLEDOWN|>', s) > 0) then
         begin
           s2 := s;
           Delete(s2, 1, Pos('<|SETMOUSEMIDDLEDOWN|>', s2) + 21);
@@ -1115,6 +1115,21 @@ begin
           Sleep(10);
           Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
         end;
+
+        if (Pos('<|WHEELMOUSE|>', s) > 0) then
+        begin
+          s2 := s;
+          Delete(s2, 1, Pos('<|WHEELMOUSE|>', s2) + 13);
+
+          s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
+         { Synchronize(
+          procedure
+          begin
+            showMessage(s2);
+          end); }
+          mouse_event(MOUSEEVENTF_WHEEL, 0, 0, DWORD(StrToInt(s2)), 0);
+        end;
+
 
         // Clipboard Remote
         if (Pos('<|CLIPBOARD|>', s) > 0) then
@@ -1204,7 +1219,7 @@ begin
 
           s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
 
-          Socket.SendText('<|REDIRECT|><|FOLDERLIST|>' + ListFolders(s2) + '<<|');
+          Socket.SendText('<|REDIRECT|><|FOLDERLIST|>' + ListFolders(s2) + '<<|FOLDERLIST');
         end;
 
   //Request Files List
@@ -1215,12 +1230,24 @@ begin
 
           s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
 
-          Socket.SendText('<|REDIRECT|><|FILESLIST|>' + ListFiles(s2, '*.*') + '<<|');
+          Socket.SendText('<|REDIRECT|><|FILESLIST|>' + ListFiles(s2, '*.*') + '<<|FILESLIST');
         end;
 
   // Receive Folder List
         if (Pos('<|FOLDERLIST|>', s) > 0) then
         begin
+
+          while Socket.Connected do
+          begin
+            if (Pos('<<|FOLDERLIST', s) > 0) then
+              break;
+            if (Socket.ReceiveLength > 0) then
+            begin
+              s := s + Socket.ReceiveText;
+            end;
+            Sleep(5);
+          end;
+
           s2 := s;
           Delete(s2, 1, Pos('<|FOLDERLIST|>', s2) + 13);
 
@@ -1249,6 +1276,7 @@ begin
                   L.Caption := FoldersAndFiles.Strings[i];
                   L.ImageIndex := 1;
                 end;
+                frm_ShareFiles.Caption := 'Share Files - '+IntToStr(frm_ShareFiles.ShareFiles_ListView.Items.Count)+' Items found';
               end);
             Sleep(5); // Effect
           end;
@@ -1260,6 +1288,18 @@ begin
   // Receive Files List
         if (Pos('<|FILESLIST|>', s) > 0) then
         begin
+
+          while Socket.Connected do
+          begin
+            if (Pos('<<|FILESLIST', s) > 0) then
+              break;
+            if (Socket.ReceiveLength > 0) then
+            begin
+              s := s + Socket.ReceiveText;
+            end;
+            Sleep(5);
+          end;
+
           s2 := s;
           Delete(s2, 1, Pos('<|FILESLIST|>', s2) + 12);
 
@@ -1289,8 +1329,28 @@ begin
                   L.ImageIndex := 8
                 else if (Extension = '.bat') then
                   L.ImageIndex := 9
+                else if (Extension = '.xml') then
+                  L.ImageIndex := 10
+                else if (Extension = '.sql') then
+                  L.ImageIndex := 11
+                else if (Extension = '.html') then
+                  L.ImageIndex := 12
+                else if (Extension = '.xls') then
+                  L.ImageIndex := 13
+                else if (Extension = '.png') then
+                  L.ImageIndex := 14
+                else if (Extension = '.doc') then
+                  L.ImageIndex := 15
+                else if (Extension = '.docx') then
+                  L.ImageIndex := 15
+                else if (Extension = '.pdf') then
+                  L.ImageIndex := 16
+                else if (Extension = '.dll') then
+                  L.ImageIndex := 17
                 else
                   L.ImageIndex := 2;
+
+                frm_ShareFiles.Caption := 'Share Files - '+IntToStr(frm_ShareFiles.ShareFiles_ListView.Items.Count)+' Items found';
               end);
             Sleep(5); // Effect
           end;
@@ -1300,6 +1360,7 @@ begin
             procedure
             begin
               frm_ShareFiles.Directory_Edit.Enabled := true;
+              frm_ShareFiles.Caption := 'Share Files - '+IntToStr(frm_ShareFiles.ShareFiles_ListView.Items.Count)+' Items found';
             end);
 
         end;

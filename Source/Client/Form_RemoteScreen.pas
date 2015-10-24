@@ -45,6 +45,8 @@ type
     procedure Screen_ImageDblClick(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure FormCreate(Sender: TObject);
+    procedure FormMouseWheel(Sender: TObject; Shift: TShiftState;
+      WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
   private
     procedure WMGetMinMaxInfo(var Message: TWMGetMinMaxInfo); message WM_GETMINMAXINFO;
     { Private declarations }
@@ -384,6 +386,13 @@ procedure Tfrm_RemoteScreen.FormCreate(Sender: TObject);
 begin
   // Separate Window
   SetWindowLong(Handle, GWL_EXSTYLE, WS_EX_APPWINDOW);
+end;
+
+procedure Tfrm_RemoteScreen.FormMouseWheel(Sender: TObject; Shift: TShiftState;
+  WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
+begin
+  if(MouseRemote_CheckBox.Checked) then
+    frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|WHEELMOUSE|>'+intToStr(WheelDelta)+'<<|');
 end;
 
 procedure Tfrm_RemoteScreen.FormShow(Sender: TObject);

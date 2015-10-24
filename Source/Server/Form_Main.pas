@@ -375,7 +375,7 @@ begin
       end;
     except
     end;
-    Sleep(5);
+    Sleep(5); // Avoids using 100% CPU
   end;
 
 end;
@@ -516,12 +516,34 @@ begin
         s2 := s;
         Delete(s2, 1, Pos('<|REDIRECT|>', s2) + 11);
 
+        if (Pos('<|FOLDERLIST|>', s2) > 0) then
+        begin
+          while (AThread_Main.Connection.Connected) do
+          begin
+            if (Pos('<<|FOLDERLIST', s2) > 0) then
+              Break;
+            s2 := s2 + AThread_Main.Connection.CurrentReadBuffer;
+            Sleep(5); // Avoids using 100% CPU
+          end;
+        end;
+
+        if (Pos('<|FILESLIST|>', s2) > 0) then
+        begin
+          while (AThread_Main.Connection.Connected) do
+          begin
+            if (Pos('<<|FILESLIST', s2) > 0) then
+              Break;
+            s2 := s2 + AThread_Main.Connection.CurrentReadBuffer;
+            Sleep(5); // Avoids using 100% CPU
+          end;
+        end;
+
         AThread_Main_Target.Connection.Write(s2);
       end;
     except
 
     end;
-    Sleep(5);
+    Sleep(5); // Avoids using 100% CPU
   end;
 end;
 
@@ -575,11 +597,12 @@ begin
 
     if (Length(s) < 1) then
       break;
+
     try
       AThread_Desktop_Target.Connection.Write(s);
     except
     end;
-    Sleep(5);
+    Sleep(5); // Avoids using 100% CPU
   end;
 end;
 
@@ -602,11 +625,12 @@ begin
 
     if (Length(s) < 1) then
       break;
+
     try
       AThread_Keyboard_Target.Connection.Write(s);
     except
     end;
-    Sleep(5);
+    Sleep(5); // Avoids using 100% CPU
   end;
 end;
 
@@ -631,11 +655,12 @@ begin
 
     if (Length(s) < 1) then
       break;
+
     try
       AThread_Files_Target.Connection.Write(s);
     except
     end;
-    Sleep(5);
+    Sleep(5); // Avoids using 100% CPU
   end;
 end;
 
