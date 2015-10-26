@@ -41,6 +41,13 @@ type
   end;
 
 type
+  TThread_Connection_Keyboard = class(TThread)
+    Socket: TCustomWinSocket;
+    constructor Create(aSocket: TCustomWinSocket); overload;
+    procedure Execute; override;
+  end;
+
+type
   TThread_Connection_Files = class(TThread)
     Socket: TCustomWinSocket;
     constructor Create(aSocket: TCustomWinSocket); overload;
@@ -89,7 +96,6 @@ type
     procedure Desktop_SocketError(Sender: TObject; Socket: TCustomWinSocket; ErrorEvent: TErrorEvent; var ErrorCode: Integer);
     procedure Desktop_SocketConnect(Sender: TObject; Socket: TCustomWinSocket);
     procedure Keyboard_SocketError(Sender: TObject; Socket: TCustomWinSocket; ErrorEvent: TErrorEvent; var ErrorCode: Integer);
-    procedure Keyboard_SocketRead(Sender: TObject; Socket: TCustomWinSocket);
     procedure Keyboard_SocketConnect(Sender: TObject; Socket: TCustomWinSocket);
     procedure TargetID_EditKeyPress(Sender: TObject; var Key: Char);
     procedure Files_SocketError(Sender: TObject; Socket: TCustomWinSocket; ErrorEvent: TErrorEvent; var ErrorCode: Integer);
@@ -142,6 +148,13 @@ begin
 end;
 
 constructor TThread_Connection_Desktop.Create(aSocket: TCustomWinSocket);
+begin
+  inherited Create(true);
+  Socket := aSocket;
+  FreeOnTerminate := true;
+end;
+
+constructor TThread_Connection_Keyboard.Create(aSocket: TCustomWinSocket);
 begin
   inherited Create(true);
   Socket := aSocket;
@@ -640,71 +653,17 @@ begin
 end;
 
 procedure Tfrm_Main.Keyboard_SocketConnect(Sender: TObject; Socket: TCustomWinSocket);
+var
+  Thread_Connection_Keyboard: TThread_Connection_Keyboard;
 begin
   Socket.SendText('<|KEYBOARDSOCKET|>' + MyID + '<<|');
+  Thread_Connection_Keyboard := TThread_Connection_Keyboard.Create(Socket);
+  Thread_Connection_Keyboard.Resume;
 end;
 
 procedure Tfrm_Main.Keyboard_SocketError(Sender: TObject; Socket: TCustomWinSocket; ErrorEvent: TErrorEvent; var ErrorCode: Integer);
 begin
   ErrorCode := 0;
-end;
-
-procedure Tfrm_Main.Keyboard_SocketRead(Sender: TObject; Socket: TCustomWinSocket);
-var
-  s: string;
-begin
-  s := Socket.ReceiveText;
-
-  // Combo Keys
-  if (Pos('<|ALTDOWN|>', s) > 0) then
-  begin
-    s := StringReplace(s, '<|ALTDOWN|>', '', [rfReplaceAll]);
-    keybd_event(18, 0, 0, 0);
-  end;
-
-  if (Pos('<|ALTUP|>', s) > 0) then
-  begin
-    s := StringReplace(s, '<|ALTUP|>', '', [rfReplaceAll]);
-    keybd_event(18, 0, KEYEVENTF_KEYUP, 0);
-  end;
-
-  if (Pos('<|CTRLDOWN|>', s) > 0) then
-  begin
-    s := StringReplace(s, '<|CTRLDOWN|>', '', [rfReplaceAll]);
-    keybd_event(17, 0, 0, 0);
-  end;
-
-  if (Pos('<|CTRLUP|>', s) > 0) then
-  begin
-    s := StringReplace(s, '<|CTRLUP|>', '', [rfReplaceAll]);
-    keybd_event(17, 0, KEYEVENTF_KEYUP, 0);
-  end;
-
-  if (Pos('<|SHIFTDOWN|>', s) > 0) then
-  begin
-    s := StringReplace(s, '<|SHIFTDOWN|>', '', [rfReplaceAll]);
-    keybd_event(16, 0, 0, 0);
-  end;
-
-  if (Pos('<|SHIFTUP|>', s) > 0) then
-  begin
-    s := StringReplace(s, '<|SHIFTUP|>', '', [rfReplaceAll]);
-    keybd_event(16, 0, KEYEVENTF_KEYUP, 0);
-  end;
-
-  if (Pos('?', s) > 0) then
-  begin
-    if (GetKeyState(VK_SHIFT) < 0) then
-    begin
-      keybd_event(16, 0, KEYEVENTF_KEYUP, 0);
-      SendKeys(PWideChar(s), false);
-      keybd_event(16, 0, 0, 0);
-    end;
-
-  end
-  else
-    SendKeys(PWideChar(s), false);
-
 end;
 
 procedure Tfrm_Main.Main_SocketConnect(Sender: TObject; Socket: TCustomWinSocket);
@@ -1122,11 +1081,6 @@ begin
           Delete(s2, 1, Pos('<|WHEELMOUSE|>', s2) + 13);
 
           s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
-         { Synchronize(
-          procedure
-          begin
-            showMessage(s2);
-          end); }
           mouse_event(MOUSEEVENTF_WHEEL, 0, 0, DWORD(StrToInt(s2)), 0);
         end;
 
@@ -1276,7 +1230,7 @@ begin
                   L.Caption := FoldersAndFiles.Strings[i];
                   L.ImageIndex := 1;
                 end;
-                frm_ShareFiles.Caption := 'Share Files - '+IntToStr(frm_ShareFiles.ShareFiles_ListView.Items.Count)+' Items found';
+                frm_ShareFiles.Caption := 'Share Files - ' + IntToStr(frm_ShareFiles.ShareFiles_ListView.Items.Count) + ' Items found';
               end);
             Sleep(5); // Effect
           end;
@@ -1350,7 +1304,7 @@ begin
                 else
                   L.ImageIndex := 2;
 
-                frm_ShareFiles.Caption := 'Share Files - '+IntToStr(frm_ShareFiles.ShareFiles_ListView.Items.Count)+' Items found';
+                frm_ShareFiles.Caption := 'Share Files - ' + IntToStr(frm_ShareFiles.ShareFiles_ListView.Items.Count) + ' Items found';
               end);
             Sleep(5); // Effect
           end;
@@ -1360,7 +1314,7 @@ begin
             procedure
             begin
               frm_ShareFiles.Directory_Edit.Enabled := true;
-              frm_ShareFiles.Caption := 'Share Files - '+IntToStr(frm_ShareFiles.ShareFiles_ListView.Items.Count)+' Items found';
+              frm_ShareFiles.Caption := 'Share Files - ' + IntToStr(frm_ShareFiles.ShareFiles_ListView.Items.Count) + ' Items found';
             end);
 
         end;
@@ -1422,7 +1376,73 @@ begin
   end;
 end;
 
+procedure TThread_Connection_Keyboard.Execute;
+var
+  s: string;
+begin
+  while (Socket.Connected) do
+  begin
 
+    if (Socket.ReceiveLength > 0) then
+    begin
+      s := Socket.ReceiveText;
+
+
+  // Combo Keys
+      if (Pos('<|ALTDOWN|>', s) > 0) then
+      begin
+        s := StringReplace(s, '<|ALTDOWN|>', '', [rfReplaceAll]);
+        keybd_event(18, 0, 0, 0);
+      end;
+
+      if (Pos('<|ALTUP|>', s) > 0) then
+      begin
+        s := StringReplace(s, '<|ALTUP|>', '', [rfReplaceAll]);
+        keybd_event(18, 0, KEYEVENTF_KEYUP, 0);
+      end;
+
+      if (Pos('<|CTRLDOWN|>', s) > 0) then
+      begin
+        s := StringReplace(s, '<|CTRLDOWN|>', '', [rfReplaceAll]);
+        keybd_event(17, 0, 0, 0);
+      end;
+
+      if (Pos('<|CTRLUP|>', s) > 0) then
+      begin
+        s := StringReplace(s, '<|CTRLUP|>', '', [rfReplaceAll]);
+        keybd_event(17, 0, KEYEVENTF_KEYUP, 0);
+      end;
+
+      if (Pos('<|SHIFTDOWN|>', s) > 0) then
+      begin
+        s := StringReplace(s, '<|SHIFTDOWN|>', '', [rfReplaceAll]);
+        keybd_event(16, 0, 0, 0);
+      end;
+
+      if (Pos('<|SHIFTUP|>', s) > 0) then
+      begin
+        s := StringReplace(s, '<|SHIFTUP|>', '', [rfReplaceAll]);
+        keybd_event(16, 0, KEYEVENTF_KEYUP, 0);
+      end;
+
+      if (Pos('?', s) > 0) then
+      begin
+        if (GetKeyState(VK_SHIFT) < 0) then
+        begin
+          keybd_event(16, 0, KEYEVENTF_KEYUP, 0);
+          SendKeys(PWideChar(s), false);
+          keybd_event(16, 0, 0, 0);
+        end;
+
+      end
+      else
+        SendKeys(PWideChar(s), false);
+
+    end;
+
+    Sleep(5); // Avoids using 100% CPU
+  end;
+end;
 
 
 

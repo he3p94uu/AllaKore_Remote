@@ -12882,7 +12882,7 @@ object frm_Main: Tfrm_Main
     OnKeyPress = TargetID_MaskEditKeyPress
   end
   object Reconnect_Timer: TTimer
-    Interval = 5000
+    Interval = 15000
     OnTimer = Reconnect_TimerTimer
     Left = 56
     Top = 296
@@ -12916,7 +12916,6 @@ object frm_Main: Tfrm_Main
     ClientType = ctNonBlocking
     Port = 0
     OnConnect = Keyboard_SocketConnect
-    OnRead = Keyboard_SocketRead
     OnError = Keyboard_SocketError
     Left = 168
     Top = 344
