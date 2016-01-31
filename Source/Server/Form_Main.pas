@@ -311,14 +311,9 @@ var
 begin
   inherited;
 
-  ThreadMain := nil;
-  ThreadDesktop := nil;
-  ThreadKeyboard := nil;
-  ThreadFiles := nil;
-
-  while AThread_Define.Connection.Connected do
-  begin
-    try
+  try
+    while AThread_Define.Connection.Connected do
+    begin
       s := AThread_Define.Connection.CurrentReadBuffer;
 
       if (Length(s) < 1) then
@@ -373,9 +368,8 @@ begin
 
         break; // Break the while
       end;
-    except
     end;
-    Sleep(5); // Avoids using 100% CPU
+  except
   end;
 
 end;
@@ -386,7 +380,6 @@ procedure TThreadConnection_Main.AddItems;
 var
   L: TListItem;
 begin
-  L := nil;
 
   ID := GenerateID;
   Password := GeneratePassword;
@@ -408,19 +401,16 @@ var
 begin
   inherited;
 
-  L := nil;
-  L2 := nil;
-
   Synchronize(AddItems);
 
   L := frm_Main.Connections_ListView.FindCaption(0, IntToStr(AThread_Main.Handle), false, true, false);
   L.SubItems.Objects[0] := TObject(Self);
 
   AThread_Main.Connection.Write('<|ID|>' + ID + '<|>' + Password + '<<|');
+  try
+    while AThread_Main.Connection.Connected do
+    begin
 
-  while AThread_Main.Connection.Connected do
-  begin
-    try
       s := AThread_Main.Connection.CurrentReadBuffer;
 
       if (Length(s) < 1) then
@@ -540,10 +530,9 @@ begin
 
         AThread_Main_Target.Connection.Write(s2);
       end;
-    except
-
     end;
-    Sleep(5); // Avoids using 100% CPU
+  except
+    L.Delete;
   end;
 end;
 
@@ -551,7 +540,6 @@ procedure TThreadConnection_Main.InsertPing;
 var
   L: TListItem;
 begin
-  L := nil;
 
   L := frm_Main.Connections_ListView.FindCaption(0, IntToStr(AThread_Main.Handle), false, true, false);
   if (L <> nil) then
@@ -563,9 +551,6 @@ procedure TThreadConnection_Main.InsertTargetID;
 var
   L, L2: TListItem;
 begin
-  L := nil;
-  L2 := nil;
-
   L := frm_Main.Connections_ListView.FindCaption(0, IntToStr(AThread_Main.Handle), false, true, false);
   if (L <> nil) then
   begin
@@ -585,24 +570,20 @@ var
 begin
   inherited;
 
-  L := nil;
-
   L := FindListItemID(MyID);
   L.SubItems.Objects[1] := TObject(Self);
 
-  while AThread_Desktop.Connection.Connected do
-  begin
+  try
+    while AThread_Desktop.Connection.Connected do
+    begin
+      s := AThread_Desktop.Connection.CurrentReadBuffer;
 
-    s := AThread_Desktop.Connection.CurrentReadBuffer;
+      if (Length(s) < 1) then
+        break;
 
-    if (Length(s) < 1) then
-      break;
-
-    try
       AThread_Desktop_Target.Connection.Write(s);
-    except
     end;
-    Sleep(5); // Avoids using 100% CPU
+  except
   end;
 end;
 
@@ -614,23 +595,20 @@ var
 begin
   inherited;
 
-  L := nil;
   L := FindListItemID(MyID);
   L.SubItems.Objects[2] := TObject(Self);
 
-  while AThread_Keyboard.Connection.Connected do
-  begin
+  try
+    while AThread_Keyboard.Connection.Connected do
+    begin
+      s := AThread_Keyboard.Connection.CurrentReadBuffer;
 
-    s := AThread_Keyboard.Connection.CurrentReadBuffer;
+      if (Length(s) < 1) then
+        break;
 
-    if (Length(s) < 1) then
-      break;
-
-    try
       AThread_Keyboard_Target.Connection.Write(s);
-    except
     end;
-    Sleep(5); // Avoids using 100% CPU
+  except
   end;
 end;
 
@@ -643,24 +621,20 @@ var
 begin
   inherited;
 
-  L := nil;
-
   L := FindListItemID(MyID);
   L.SubItems.Objects[3] := TObject(Self);
 
-  while AThread_Files.Connection.Connected do
-  begin
+  try
+    while AThread_Files.Connection.Connected do
+    begin
+      s := AThread_Files.Connection.CurrentReadBuffer;
 
-    s := AThread_Files.Connection.CurrentReadBuffer;
+      if (Length(s) < 1) then
+        break;
 
-    if (Length(s) < 1) then
-      break;
-
-    try
       AThread_Files_Target.Connection.Write(s);
-    except
     end;
-    Sleep(5); // Avoids using 100% CPU
+  except
   end;
 end;
 
