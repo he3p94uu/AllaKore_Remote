@@ -18,6 +18,7 @@ type
     procedure FormShow(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure Password_EditKeyPress(Sender: TObject; var Key: Char);
+    procedure FormCreate(Sender: TObject);
   private
     { Private declarations }
   public
@@ -26,7 +27,7 @@ type
 
 var
   frm_Password: Tfrm_Password;
-  Canceled: Boolean;
+  Canceled    : Boolean;
 
 implementation
 
@@ -42,11 +43,17 @@ begin
     with frm_Main do
     begin
       Status_Image.Picture.Assign(Image3.Picture);
-      Status_Label.Caption := 'Access canceled.';
+      Status_Label.Caption      := 'Access canceled.';
       TargetID_MaskEdit.Enabled := true;
-      Connect_BitBtn.Enabled := true;
+      Connect_BitBtn.Enabled    := true;
     end;
   end;
+end;
+
+procedure Tfrm_Password.FormCreate(Sender: TObject);
+begin
+  // Separate Window
+  SetWindowLong(Handle, GWL_EXSTYLE, WS_EX_APPWINDOW);
 end;
 
 procedure Tfrm_Password.FormShow(Sender: TObject);
@@ -73,4 +80,3 @@ begin
 end;
 
 end.
-

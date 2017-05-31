@@ -13,7 +13,7 @@ object frm_Main: Tfrm_Main
   Font.Name = 'Tahoma'
   Font.Style = []
   OldCreateOrder = False
-  Position = poDesktopCenter
+  Position = poScreenCenter
   OnClose = FormClose
   OnCreate = FormCreate
   PixelsPerInch = 96
@@ -12882,7 +12882,7 @@ object frm_Main: Tfrm_Main
     OnKeyPress = TargetID_MaskEditKeyPress
   end
   object Reconnect_Timer: TTimer
-    Interval = 15000
+    Interval = 5000
     OnTimer = Reconnect_TimerTimer
     Left = 56
     Top = 296

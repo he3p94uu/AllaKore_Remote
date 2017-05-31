@@ -17,7 +17,7 @@ type
     { Private declarations }
   public
     LastMessageAreYou: Boolean;
-    FirstMessage: Boolean;
+    FirstMessage     : Boolean;
     { Public declarations }
   end;
 
@@ -32,7 +32,7 @@ uses
   Form_Main;
 
 procedure Tfrm_Chat.WMGetMinMaxInfo(var Message: TWMGetMinMaxInfo);
-{sets Size-limits for the Form}
+{ sets Size-limits for the Form }
 var
   MinMaxInfo: PMinMaxInfo;
 begin
@@ -51,12 +51,12 @@ begin
   FirstMessage := true;
 
   Left := Screen.WorkAreaWidth - Width;
-  Top := Screen.WorkAreaHeight - Height;
+  Top  := Screen.WorkAreaHeight - Height;
 
-  Chat_RichEdit.SelStart := Chat_RichEdit.GetTextLen;
+  Chat_RichEdit.SelStart            := Chat_RichEdit.GetTextLen;
   Chat_RichEdit.SelAttributes.Style := [fsBold];
   Chat_RichEdit.SelAttributes.Color := clWhite;
-  Chat_RichEdit.SelText := 'AllaKore Remote - Chat' + #13 + #13;
+  Chat_RichEdit.SelText             := 'AllaKore Remote - Chat' + #13 + #13;
 end;
 
 procedure Tfrm_Chat.YourText_EditKeyPress(Sender: TObject; var Key: Char);
@@ -66,22 +66,22 @@ begin
     if (Length(YourText_Edit.Text) > 0) then
     begin
       FirstMessage := false;
-      if not (LastMessageAreYou) then
+      if not(LastMessageAreYou) then
       begin
-        LastMessageAreYou := true;
-        Chat_RichEdit.SelStart := Chat_RichEdit.GetTextLen;
+        LastMessageAreYou                 := true;
+        Chat_RichEdit.SelStart            := Chat_RichEdit.GetTextLen;
         Chat_RichEdit.SelAttributes.Style := [fsBold];
         Chat_RichEdit.SelAttributes.Color := clYellow;
-        Chat_RichEdit.SelText := #13 + #13 + 'You say:' + #13;
-        Chat_RichEdit.SelStart := Chat_RichEdit.GetTextLen;
+        Chat_RichEdit.SelText             := #13 + #13 + 'You say:' + #13;
+        Chat_RichEdit.SelStart            := Chat_RichEdit.GetTextLen;
         Chat_RichEdit.SelAttributes.Color := clWhite;
-        Chat_RichEdit.SelText := '   •   ' + YourText_Edit.Text;
+        Chat_RichEdit.SelText             := '   •   ' + YourText_Edit.Text;
       end
       else
       begin
-        Chat_RichEdit.SelStart := Chat_RichEdit.GetTextLen;
+        Chat_RichEdit.SelStart            := Chat_RichEdit.GetTextLen;
         Chat_RichEdit.SelAttributes.Color := clWhite;
-        Chat_RichEdit.SelText := #13 + '   •   ' + YourText_Edit.Text;
+        Chat_RichEdit.SelText             := #13 + '   •   ' + YourText_Edit.Text;
       end;
 
       frm_main.Main_Socket.Socket.SendText('<|REDIRECT|><|CHAT|>' + YourText_Edit.Text + '<<|');
@@ -95,4 +95,3 @@ begin
 end;
 
 end.
-

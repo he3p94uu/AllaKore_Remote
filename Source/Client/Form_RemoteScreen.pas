@@ -1,5 +1,5 @@
 unit Form_RemoteScreen;
-
+
 interface
 
 uses
@@ -45,8 +45,7 @@ type
     procedure Screen_ImageDblClick(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure FormCreate(Sender: TObject);
-    procedure FormMouseWheel(Sender: TObject; Shift: TShiftState;
-      WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
+    procedure FormMouseWheel(Sender: TObject; Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
   private
     procedure WMGetMinMaxInfo(var Message: TWMGetMinMaxInfo); message WM_GETMINMAXINFO;
     { Private declarations }
@@ -66,7 +65,7 @@ uses
   Form_Main, Form_Chat, Form_ShareFiles;
 
 procedure Tfrm_RemoteScreen.WMGetMinMaxInfo(var Message: TWMGetMinMaxInfo);
-{sets Size-limits for the Form}
+{ sets Size-limits for the Form }
 var
   MinMaxInfo: PMinMaxInfo;
 begin
@@ -102,13 +101,11 @@ begin
   // The keys programmed here, may not match the keys on your keyboard. I recommend to undertake adaptation.
   try
 
-
-
-     { Combo }
+    { Combo }
     if (Active) then
     begin
-    // Alt
-      if not (AltPressed) then
+      // Alt
+      if not(AltPressed) then
       begin
         if (GetKeyState(VK_MENU) < 0) then
         begin
@@ -125,9 +122,8 @@ begin
         end;
       end;
 
-
-    // Ctrl
-      if not (CtrlPressed) then
+      // Ctrl
+      if not(CtrlPressed) then
       begin
         if (GetKeyState(VK_CONTROL) < 0) then
         begin
@@ -144,9 +140,8 @@ begin
         end;
       end;
 
-
-    // Shift
-      if not (ShiftPressed) then
+      // Shift
+      if not(ShiftPressed) then
       begin
         if (GetKeyState(VK_SHIFT) < 0) then
         begin
@@ -203,7 +198,7 @@ begin
             SendSocketKeys('{SCROLLLOCK}');
 
           // Numbers: 1 2 3 4 5 6 7 8 9 and ! @ # $ % ¨& * ( )
-              48:
+          48:
             if (GetKeyState(VK_SHIFT) < 0) then
               SendSocketKeys(')')
             else
@@ -254,7 +249,7 @@ begin
             else
               SendSocketKeys('9');
 
-          65..90: // A..Z / a..z
+          65 .. 90: // A..Z / a..z
             begin
               if (GetKeyState(VK_CAPITAL) = 1) then
                 if (GetKeyState(VK_SHIFT) < 0) then
@@ -268,7 +263,7 @@ begin
 
             end;
 
-          96..105: // Numpad 1..9
+          96 .. 105: // Numpad 1..9
             SendSocketKeys(IntToStr(i - 96));
 
           106:
@@ -285,8 +280,8 @@ begin
             SendSocketKeys('.');
 
           // F1..F12
-              112..123:
-            SendSocketKeys('{F' + intToStr(i - 111) + '}');
+          112 .. 123:
+            SendSocketKeys('{F' + IntToStr(i - 111) + '}');
 
           186:
             if (GetKeyState(VK_SHIFT) < 0) then
@@ -372,7 +367,7 @@ end;
 
 procedure Tfrm_RemoteScreen.FileShared_ImageClick(Sender: TObject);
 begin
-  frm_ShareFiles.show;
+  frm_ShareFiles.Show;
 end;
 
 procedure Tfrm_RemoteScreen.FormClose(Sender: TObject; var Action: TCloseAction);
@@ -388,18 +383,17 @@ begin
   SetWindowLong(Handle, GWL_EXSTYLE, WS_EX_APPWINDOW);
 end;
 
-procedure Tfrm_RemoteScreen.FormMouseWheel(Sender: TObject; Shift: TShiftState;
-  WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
+procedure Tfrm_RemoteScreen.FormMouseWheel(Sender: TObject; Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
 begin
-  if(MouseRemote_CheckBox.Checked) then
-    frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|WHEELMOUSE|>'+intToStr(WheelDelta)+'<<|');
+  if (MouseRemote_CheckBox.Checked) then
+    frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|WHEELMOUSE|>' + IntToStr(WheelDelta) + '<<|');
 end;
 
 procedure Tfrm_RemoteScreen.FormShow(Sender: TObject);
 begin
-  CtrlPressed := false;
+  CtrlPressed  := false;
   ShiftPressed := false;
-  AltPressed := false;
+  AltPressed   := false;
 end;
 
 procedure Tfrm_RemoteScreen.KeyboardRemote_CheckBoxClick(Sender: TObject);
@@ -445,15 +439,15 @@ begin
   if (Resize_CheckBox.Checked) then
   begin
     Screen_Image.AutoSize := false;
-    Screen_Image.Stretch := true;
-    Screen_Image.Align := alClient;
+    Screen_Image.Stretch  := true;
+    Screen_Image.Align    := alClient;
     ResizeIcon_Image.Picture.Assign(ResizeIcon_checked_Image.Picture);
   end
   else
   begin
     Screen_Image.AutoSize := true;
-    Screen_Image.Stretch := false;
-    Screen_Image.Align := alNone;
+    Screen_Image.Stretch  := false;
+    Screen_Image.Align    := alNone;
     ResizeIcon_Image.Picture.Assign(ResizeIcon_unchecked_Image.Picture);
   end;
 
@@ -477,14 +471,14 @@ procedure Tfrm_RemoteScreen.Screen_ImageMouseDown(Sender: TObject; Button: TMous
 begin
   if (Active) and (MouseRemote_CheckBox.Checked) then
   begin
-    x := (X * frm_Main.ResolutionTargetWidth) div (Screen_Image.Width);
-    y := (Y * frm_Main.ResolutionTargetHeight) div (Screen_Image.Height);
+    X := (X * frm_Main.ResolutionTargetWidth) div (Screen_Image.Width);
+    Y := (Y * frm_Main.ResolutionTargetHeight) div (Screen_Image.Height);
     if (Button = mbLeft) then
-      frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|SETMOUSELEFTCLICKDOWN|>' + intToStr(x) + '<|>' + intToStr(y) + '<<|')
+      frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|SETMOUSELEFTCLICKDOWN|>' + IntToStr(X) + '<|>' + IntToStr(Y) + '<<|')
     else if (Button = mbRight) then
-      frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|SETMOUSERIGHTCLICKDOWN|>' + intToStr(x) + '<|>' + intToStr(y) + '<<|')
+      frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|SETMOUSERIGHTCLICKDOWN|>' + IntToStr(X) + '<|>' + IntToStr(Y) + '<<|')
     else
-      frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|SETMOUSEMIDDLEDOWN|>' + intToStr(x) + '<|>' + intToStr(y) + '<<|')
+      frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|SETMOUSEMIDDLEDOWN|>' + IntToStr(X) + '<|>' + IntToStr(Y) + '<<|')
   end;
 end;
 
@@ -492,9 +486,9 @@ procedure Tfrm_RemoteScreen.Screen_ImageMouseMove(Sender: TObject; Shift: TShift
 begin
   if (Active) and (MouseRemote_CheckBox.Checked) then
   begin
-    x := (X * frm_Main.ResolutionTargetWidth) div (Screen_Image.Width);
-    y := (Y * frm_Main.ResolutionTargetHeight) div (Screen_Image.Height);
-    frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|SETMOUSEPOS|>' + intToStr(x) + '<|>' + intToStr(y) + '<<|');
+    X := (X * frm_Main.ResolutionTargetWidth) div (Screen_Image.Width);
+    Y := (Y * frm_Main.ResolutionTargetHeight) div (Screen_Image.Height);
+    frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|SETMOUSEPOS|>' + IntToStr(X) + '<|>' + IntToStr(Y) + '<<|');
   end;
 end;
 
@@ -502,16 +496,16 @@ procedure Tfrm_RemoteScreen.Screen_ImageMouseUp(Sender: TObject; Button: TMouseB
 begin
   if (Active) and (MouseRemote_CheckBox.Checked) then
   begin
-    x := (X * frm_Main.ResolutionTargetWidth) div (Screen_Image.Width);
-    y := (Y * frm_Main.ResolutionTargetHeight) div (Screen_Image.Height);
+    X := (X * frm_Main.ResolutionTargetWidth) div (Screen_Image.Width);
+    Y := (Y * frm_Main.ResolutionTargetHeight) div (Screen_Image.Height);
     if (Button = mbLeft) then
-      frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|SETMOUSELEFTCLICKUP|>' + intToStr(x) + '<|>' + intToStr(y) + '<<|')
+      frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|SETMOUSELEFTCLICKUP|>' + IntToStr(X) + '<|>' + IntToStr(Y) + '<<|')
     else if (Button = mbRight) then
-      frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|SETMOUSERIGHTCLICKUP|>' + intToStr(x) + '<|>' + intToStr(y) + '<<|')
+      frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|SETMOUSERIGHTCLICKUP|>' + IntToStr(X) + '<|>' + IntToStr(Y) + '<<|')
     else
-      frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|SETMOUSEMIDDLEUP|>' + intToStr(x) + '<|>' + intToStr(y) + '<<|')
+      frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|SETMOUSEMIDDLEUP|>' + IntToStr(X) + '<|>' + IntToStr(Y) + '<<|')
   end;
 end;
 
 end.
-
+

@@ -1,9 +1,9 @@
 object frm_Main: Tfrm_Main
   Left = 192
   Top = 125
-  Width = 758
-  Height = 589
   Caption = 'AllaKore Remote - Server (BETA)'
+  ClientHeight = 550
+  ClientWidth = 742
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -11,7 +11,7 @@ object frm_Main: Tfrm_Main
   Font.Name = 'MS Sans Serif'
   Font.Style = []
   OldCreateOrder = False
-  Position = poDesktopCenter
+  Position = poScreenCenter
   OnCreate = FormCreate
   PixelsPerInch = 96
   TextHeight = 13
@@ -78,24 +78,18 @@ object frm_Main: Tfrm_Main
     Left = 448
     Top = 80
   end
-  object Main_IdTCPServer: TIdTCPServer
-    Bindings = <>
-    CommandHandlers = <>
-    DefaultPort = 0
-    Greeting.NumericCode = 0
-    MaxConnectionReply.NumericCode = 0
-    OnConnect = Main_IdTCPServerConnect
-    OnExecute = Main_IdTCPServerExecute
-    ReplyExceptionCode = 0
-    ReplyTexts = <>
-    ReplyUnknownCommand.NumericCode = 0
-    Left = 448
-    Top = 120
-  end
   object Ping_Timer: TTimer
     Interval = 5000
     OnTimer = Ping_TimerTimer
     Left = 360
     Top = 128
+  end
+  object Main_ServerSocket: TServerSocket
+    Active = False
+    Port = 0
+    ServerType = stNonBlocking
+    OnClientConnect = Main_ServerSocketClientConnect
+    Left = 464
+    Top = 152
   end
 end

@@ -1,11 +1,11 @@
 unit Form_ShareFiles;
-
+
 interface
 
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes,
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ComCtrls, Vcl.ImgList,
-  Vcl.ExtCtrls, Vcl.StdCtrls, Vcl.Buttons;
+  Vcl.ExtCtrls, Vcl.StdCtrls, Vcl.Buttons, System.ImageList;
 
 type
   Tfrm_ShareFiles = class(TForm)
@@ -39,13 +39,12 @@ type
     { Private declarations }
   public
     DirectoryToSaveFile: string;
-    FileStream: TFileStream;
+    FileStream         : TFileStream;
     { Public declarations }
   end;
 
 var
   frm_ShareFiles: Tfrm_ShareFiles;
-
 
 implementation
 
@@ -54,17 +53,12 @@ implementation
 uses
   Form_Main;
 
-function MemoryStreamToString(M: TMemoryStream): AnsiString;
-begin
-  SetString(Result, PAnsiChar(M.Memory), M.Size);
-end;
-
 procedure Tfrm_ShareFiles.GoToDirectory(Directory: string);
 begin
   Directory_Edit.Enabled := false;
-  if not (Directory[Length(Directory)] = '\') then
+  if not(Directory[Length(Directory)] = '\') then
   begin
-    Directory := Directory + '\';
+    Directory           := Directory + '\';
     Directory_Edit.Text := Directory;
   end;
 
@@ -76,10 +70,10 @@ begin
   if (ShareFiles_ListView.ItemIndex = -1) then
     exit;
 
-  if not (ShareFiles_ListView.Selected.ImageIndex = 0) and not (ShareFiles_ListView.Selected.ImageIndex = 1) then
+  if not(ShareFiles_ListView.Selected.ImageIndex = 0) and not(ShareFiles_ListView.Selected.ImageIndex = 1) then
   begin
     SaveDialog1.FileName := '';
-    SaveDialog1.Filter := 'File (*' + ExtractFileExt(ShareFiles_ListView.Selected.Caption) + ')|*' + ExtractFileExt(ShareFiles_ListView.Selected.Caption);
+    SaveDialog1.Filter   := 'File (*' + ExtractFileExt(ShareFiles_ListView.Selected.Caption) + ')|*' + ExtractFileExt(ShareFiles_ListView.Selected.Caption);
     if (SaveDialog1.Execute()) then
     begin
       DirectoryToSaveFile := SaveDialog1.FileName + ExtractFileExt(ShareFiles_ListView.Selected.Caption);
@@ -93,8 +87,8 @@ procedure Tfrm_ShareFiles.EnterInDirectory;
 var
   Directory: string;
 begin
-  if (ShareFiles_ListView.ItemIndex = -1) or not (Directory_Edit.Enabled) then
-    Exit;
+  if (ShareFiles_ListView.ItemIndex = -1) or not(Directory_Edit.Enabled) then
+    exit;
 
   if (ShareFiles_ListView.Selected.ImageIndex = 0) or (ShareFiles_ListView.Selected.ImageIndex = 1) then
   begin
@@ -125,13 +119,14 @@ end;
 procedure Tfrm_ShareFiles.Upload_BitBtnClick(Sender: TObject);
 var
   FileName: string;
+  arquivo : TMemoryStream;
 begin
   OpenDialog1.FileName := '';
   if (OpenDialog1.Execute()) then
   begin
 
-    FileStream := TFileStream.Create(OpenDialog1.FileName, fmOpenRead);
-    FileName := ExtractFileName(OpenDialog1.FileName);
+    FileStream             := TFileStream.Create(OpenDialog1.FileName, fmOpenRead);
+    FileName               := ExtractFileName(OpenDialog1.FileName);
     Upload_ProgressBar.Max := FileStream.Size;
 
     frm_Main.Files_Socket.Socket.SendText('<|DIRECTORYTOSAVE|>' + Directory_Edit.Text + FileName + '<|><|SIZE|>' + intToStr(FileStream.Size) + '<<|');
@@ -163,7 +158,7 @@ begin
 end;
 
 procedure Tfrm_ShareFiles.WMGetMinMaxInfo(var Message: TWMGetMinMaxInfo);
-{sets Size-limits for the Form}
+{ sets Size-limits for the Form }
 var
   MinMaxInfo: PMinMaxInfo;
 begin
@@ -175,4 +170,4 @@ begin
 end;
 
 end.
-
+
