@@ -11,27 +11,24 @@ procedure CompareStream(MyFirstStream, MySecondStream, MyCompareStream: TMemoryS
 
 procedure ResumeStream(MyFirstStream, MySecondStream, MyCompareStream: TMemoryStream);
 
-//function ResizeBmp(Bitmap: TBitmap; const NewWidth, NewHeight: integer): TBitmap;
+// function ResizeBmp(Bitmap: TBitmap; const NewWidth, NewHeight: integer): TBitmap;
 procedure ResizeBmp(bmp: TBitmap; Width, Height: Integer);
 
 implementation
 
-
-
 // Resize the Bitmap
-{function ResizeBmp(Bitmap: TBitmap; const NewWidth, NewHeight: integer): TBitmap;
-begin
+{ function ResizeBmp(Bitmap: TBitmap; const NewWidth, NewHeight: integer): TBitmap;
+  begin
   Bitmap.Canvas.StretchDraw(Rect(0, 0, NewWidth, NewHeight), Bitmap);
   Bitmap.SetSize(NewWidth, NewHeight);
 
   Result := Bitmap;
-end;  }
-
+  end; }
 
 // Resize the Bitmap ( Best quality )
 procedure ResizeBmp(bmp: TBitmap; Width, Height: Integer);
 var
-  SrcBMP: TBitmap;
+  SrcBMP : TBitmap;
   DestBMP: TBitmap;
 begin
   SrcBMP := TBitmap.Create;
@@ -39,7 +36,7 @@ begin
     SrcBMP.Assign(bmp);
     DestBMP := TBitmap.Create;
     try
-      DestBMP.Width := Width;
+      DestBMP.Width  := Width;
       DestBMP.Height := Height;
       SetStretchBltMode(DestBMP.Canvas.Handle, HALFTONE);
       StretchBlt(DestBMP.Canvas.Handle, 0, 0, DestBMP.Width, DestBMP.Height, SrcBMP.Canvas.Handle, 0, 0, SrcBMP.Width, SrcBMP.Height, SRCCOPY);
@@ -52,30 +49,28 @@ begin
   end;
 end;
 
-
-
 // Screenshot
 procedure GetScreenToBmp(DrawCur: Boolean; StreamName: TMemoryStream; Width, Height: Integer);
 var
-  Mybmp: Tbitmap;
-  Cursorx, Cursory: integer;
-  dc: hdc;
-  Mycan: Tcanvas;
-  R: TRect;
-  DrawPos: TPoint;
-  MyCursor: TIcon;
-  hld: hwnd;
-  Threadld: dword;
-  mp: TPoint;
-  pIconInfo: TIconInfo;
+  Mybmp           : TBitmap;
+  Cursorx, Cursory: Integer;
+  dc              : hdc;
+  Mycan           : Tcanvas;
+  R               : TRect;
+  DrawPos         : TPoint;
+  MyCursor        : TIcon;
+  hld             : hwnd;
+  Threadld        : dword;
+  mp              : TPoint;
+  pIconInfo       : TIconInfo;
 begin
-  Mybmp := Tbitmap.Create;
+  Mybmp := TBitmap.Create;
   Mycan := Tcanvas.Create;
-  dc := GetWindowDC(0);
+  dc    := GetWindowDC(0);
   try
     Mycan.Handle := dc;
-    R := Rect(0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN));
-    Mybmp.Width := R.Right;
+    R            := Rect(0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN));
+    Mybmp.Width  := R.Right;
     Mybmp.Height := R.Bottom;
     Mybmp.Canvas.CopyRect(R, Mycan, R);
   finally
@@ -89,7 +84,7 @@ begin
     GetCursorPos(DrawPos);
     MyCursor := TIcon.Create;
     GetCursorPos(mp);
-    hld := WindowFromPoint(mp);
+    hld      := WindowFromPoint(mp);
     Threadld := GetWindowThreadProcessId(hld, nil);
     AttachThreadInput(GetCurrentThreadId, Threadld, True);
     MyCursor.Handle := Getcursor();
@@ -104,7 +99,7 @@ begin
     MyCursor.Free;
   end;
   Mybmp.PixelFormat := pf8bit;
-  //ResizeBMP(Mybmp, Width, Height);
+  // ResizeBMP(Mybmp, Width, Height);
   Mybmp.SaveToStream(StreamName);
   Mybmp.Free;
 end;
@@ -112,12 +107,12 @@ end;
 // Compare Streams and separate when the Bitmap Pixels are equal.
 procedure CompareStream(MyFirstStream, MySecondStream, MyCompareStream: TMemoryStream; Width, Height: Integer);
 var
-  I: integer;
+  I         : Integer;
   P1, P2, P3: ^AnsiChar;
 begin
   MySecondStream.Clear;
   MyCompareStream.Clear;
-  GetScreenToBmp(false, MySecondStream, Width, Height);
+  GetScreenToBmp(True, MySecondStream, Width, Height);
 
   P1 := MyFirstStream.Memory;
   P2 := MySecondStream.Memory;
@@ -126,23 +121,26 @@ begin
 
   for I := 0 to MyFirstStream.Size - 1 do
   begin
-    if P1^ = P2^then
+
+    if P1^ = P2^ then
       P3^ := '0'
     else
       P3^ := P2^;
+
     Inc(P1);
     Inc(P2);
     Inc(P3);
+
   end;
 
   MyFirstStream.Clear;
-  MyFirstStream.CopyFrom(MySecondStream, 0);
+  MyFirstStream.LoadFromStream(MySecondStream);
 end;
 
 // Modifies Streams to set the Pixels of Bitmap
 procedure ResumeStream(MyFirstStream, MySecondStream, MyCompareStream: TMemoryStream);
 var
-  I: integer;
+  I         : Integer;
   P1, P2, P3: ^AnsiChar;
 begin
   P1 := MyFirstStream.Memory;
@@ -152,19 +150,21 @@ begin
 
   for I := 0 to MyFirstStream.Size - 1 do
   begin
+
     if P3^ = '0' then
       P2^ := P1^
     else
       P2^ := P3^;
+
     Inc(P1);
     Inc(P2);
     Inc(P3);
+
   end;
 
   MyFirstStream.Clear;
-  MyFirstStream.CopyFrom(MySecondStream, 0);
+  MyFirstStream.LoadFromStream(MySecondStream);
   MySecondStream.Position := 0;
 end;
 
 end.
-

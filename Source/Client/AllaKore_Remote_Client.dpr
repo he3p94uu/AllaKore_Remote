@@ -11,7 +11,9 @@ uses
   Form_ShareFiles in 'Form_ShareFiles.pas' {frm_ShareFiles},
   sndkey32 in '..\Units\sndkey32.pas',
   StreamManager in '..\Units\StreamManager.pas',
-  ZLIBEX in '..\Units\ZLIBEX.pas';
+  ZLibEx in '..\Units\DelphiZlib\ZLibEx.pas',
+  ZLibExApi in '..\Units\DelphiZlib\ZLibExApi.pas',
+  ZLibExGZ in '..\Units\DelphiZlib\ZLibExGZ.pas';
 
 {$R *.res}
 

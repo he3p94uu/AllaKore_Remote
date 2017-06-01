@@ -22,7 +22,7 @@ uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes,
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.Imaging.pngimage, Vcl.ExtCtrls,
   Vcl.StdCtrls, Vcl.Buttons, System.Win.ScktComp, Vcl.AppEvnts, Vcl.ComCtrls, Winapi.MMSystem,
-  Registry, Vcl.Menus, Vcl.Mask, Clipbrd, sndkey32, StreamManager, ZLIBEX;
+  Registry, Vcl.Menus, Vcl.Mask, Clipbrd, sndkey32, StreamManager, zLibEx;
 
 type
   TThread_Connection_Main = class(TThread)
@@ -119,18 +119,19 @@ type
   end;
 
 var
-  frm_Main                         : Tfrm_Main;
-  ResolutionWidth, ResolutionHeight: Integer;
-  Timeout                          : Integer;
-  OldWallpaper                     : string;
-  OldClipboardText                 : string;
-  Accessed, LostConnection         : Boolean;
+  frm_Main                : Tfrm_Main;
+  ResolutionWidth         : Integer;
+  ResolutionHeight        : Integer;
+  Timeout                 : Integer;
+  OldWallpaper            : string;
+  OldClipboardText        : string;
+  Accessed, LostConnection: Boolean;
 
 const
-  Host              = 'localhost';    // Host of Sockets  (Insert the IP Address or DNS of your Server)
-  Port              = 3898;           // Port of Sockets
-  ConnectionTimeout = 60;             // Timeout of connection (in secound)
-  ProcessingSlack   = 2;              // Processing slack for Sleep Commands
+  Host              = 'localhost'; // Host of Sockets  (Insert the IP Address or DNS of your Server)
+  Port              = 3898;        // Port of Sockets
+  ConnectionTimeout = 60;          // Timeout of connection (in secound)
+  ProcessingSlack   = 2;           // Processing slack for Sleep Commands
 
 implementation
 
@@ -185,9 +186,9 @@ begin
   if not VerQueryValue(Buffer, '\', Pointer(FixedPtr), Size) then
     RaiseLastOSError;
   Result := Format('%d.%d.%d.%d', [LongRec(FixedPtr.dwFileVersionMS).Hi, // major
-    LongRec(FixedPtr.dwFileVersionMS).Lo, // minor
-    LongRec(FixedPtr.dwFileVersionLS).Hi,  // release
-    LongRec(FixedPtr.dwFileVersionLS).Lo]) // build
+    LongRec(FixedPtr.dwFileVersionMS).Lo,                                // minor
+    LongRec(FixedPtr.dwFileVersionLS).Hi,                                // release
+    LongRec(FixedPtr.dwFileVersionLS).Lo])                               // build
 end;
 
 function GetWallpaperDirectory: string;
@@ -325,10 +326,12 @@ end;
 // Function to List Folders
 function ListFolders(Directory: string): string;
 var
-  FileName, Filelist, Dirlist: string;
-  Searchrec                  : TWin32FindData;
-  FindHandle                 : THandle;
-  ReturnStr                  : string;
+  FileName  : string;
+  Filelist  : string;
+  Dirlist   : string;
+  Searchrec : TWin32FindData;
+  FindHandle: THandle;
+  ReturnStr : string;
 begin
   ReturnStr := '';
 
@@ -467,9 +470,11 @@ end;
 // Compress Stream with zLib
 function CompressStream(SrcStream: TMemoryStream): Boolean;
 var
-  InputStream, OutputStream: TMemoryStream;
-  inbuffer, outbuffer      : Pointer;
-  count, outcount          : longint;
+  InputStream    : TMemoryStream;
+  OutputStream   : TMemoryStream;
+  inbuffer       : Pointer;
+  outbuffer      : Pointer;
+  count, outcount: longint;
 begin
   Result := False;
 
@@ -505,9 +510,12 @@ end;
 // Decompress Stream with zLib
 function DeCompressStream(SrcStream: TMemoryStream): Boolean;
 var
-  InputStream, OutputStream: TMemoryStream;
-  inbuffer, outbuffer      : Pointer;
-  count, outcount          : longint;
+  InputStream : TMemoryStream;
+  OutputStream: TMemoryStream;
+  inbuffer    : Pointer;
+  outbuffer   : Pointer;
+  count       : longint;
+  outcount    : longint;
 begin
   Result := False;
 
@@ -520,18 +528,22 @@ begin
     Exit;
 
   try
-    InputStream  := TMemoryStream.Create;
-    OutputStream := TMemoryStream.Create;
+    try
+      InputStream  := TMemoryStream.Create;
+      OutputStream := TMemoryStream.Create;
 
-    InputStream.LoadFromStream(SrcStream);
-    count := InputStream.Size;
-    getmem(inbuffer, count);
-    InputStream.ReadBuffer(inbuffer^, count);
-    zdecompress(inbuffer, count, outbuffer, outcount);
-    OutputStream.Write(outbuffer^, outcount);
-    SrcStream.Clear;
-    SrcStream.LoadFromStream(OutputStream);
-    Result := true;
+      InputStream.LoadFromStream(SrcStream);
+      count := InputStream.Size;
+      getmem(inbuffer, count);
+      InputStream.ReadBuffer(inbuffer^, count);
+      zdecompress(inbuffer, count, outbuffer, outcount);
+      OutputStream.Write(outbuffer^, outcount);
+      SrcStream.Clear;
+      SrcStream.LoadFromStream(OutputStream);
+      Result := true;
+    except
+      Result := False;
+    end;
   finally
     FreeAndNil(InputStream);
     FreeAndNil(OutputStream);
@@ -539,6 +551,39 @@ begin
     FreeMem(outbuffer, outcount);
   end;
 end;
+
+{
+
+  procedure CompressStream(AInStream, AOutStream: TStream);
+  var
+  lCompress: TCompressionStream;
+  begin
+  lCompress := TCompressionStream.Create(clMax,AOutStream);
+  try
+  AInStream.Seek(0,0);
+  lCompress.CopyFrom(AInStream,AInStream.Size);
+  finally
+  FreeAndNil(lCompress);
+  end;
+  AOutStream.Seek(0,0);
+  end;
+
+
+  procedure DecompressStream(AInStream, AOutStream: TStream);
+  var
+  lDecompress: TDecompressionStream;
+  begin
+  AInStream.Seek(0,0);
+  lDecompress := TDecompressionStream.Create(AInStream);
+  try
+  lDecompress.Seek(0,0);
+  AOutStream.CopyFrom(lDecompress,lDecompress.Size);
+  finally
+  FreeAndNil(lDecompress);
+  end;
+  AOutStream.Seek(0,0);
+  end;
+}
 
 function MemoryStreamToString(M: TMemoryStream): AnsiString;
 begin
@@ -756,13 +801,17 @@ end;
 // Connection are Main
 procedure TThread_Connection_Main.Execute;
 var
-  s, s2               : string;
-  MousePosX, MousePosY: Integer;
-  i                   : Integer;
-  FoldersAndFiles     : TStringList;
-  L                   : TListItem;
-  FileToUpload        : TFileStream;
-  Extension           : string;
+  Buffer         : string;
+  BufferTemp     : string;
+  Extension      : string;
+  i              : Integer;
+  Position       : Integer;
+  MousePosX      : Integer;
+  MousePosY      : Integer;
+  FoldersAndFiles: TStringList;
+  L              : TListItem;
+  FileToUpload   : TFileStream;
+
 begin
   inherited;
 
@@ -773,23 +822,25 @@ begin
   begin
 
     try
-      if (Socket.ReceiveLength > 0) then
+      if Socket.ReceiveLength > 0 then
       begin
-        s := Socket.ReceiveText;
+        Buffer := Socket.ReceiveText;
 
         // Received data, then resets the timeout
         Timeout := 0;
 
         // If receive ID, are Online
-        if (Pos('<|ID|>', s) > 0) then
+        Position := Pos('<|ID|>', Buffer);
+        if Position > 0 then
         begin
-          s2 := s;
-          Delete(s2, 1, Pos('<|ID|>', s2) + 5);
+          BufferTemp := Buffer;
+          Delete(BufferTemp, 1, Position + 5);
 
-          frm_Main.MyID := Copy(s2, 1, Pos('<|>', s2) - 1);
-          Delete(s2, 1, Pos('<|>', s2) + 2);
+          Position      := Pos('<|>', BufferTemp);
+          frm_Main.MyID := Copy(BufferTemp, 1, Position - 1);
+          Delete(BufferTemp, 1, Position + 2);
 
-          frm_Main.MyPassword := Copy(s2, 1, Pos('<<|', s2) - 1);
+          frm_Main.MyPassword := Copy(BufferTemp, 1, Pos('<<|', BufferTemp) - 1);
 
           Synchronize(frm_Main.SetOnline);
 
@@ -809,13 +860,13 @@ begin
         end;
 
         // Ping
-        if (Pos('<|PING|>', s) > 0) then
+        if Buffer.Contains('<|PING|>') then
         begin
           Socket.SendText('<|PONG|>');
         end;
 
         // Warns access and remove Wallpaper
-        if (Pos('<|ACCESSING|>', s) > 0) then
+        if Buffer.Contains('<|ACCESSING|>') then
         begin
           OldWallpaper := GetWallpaperDirectory;
           ChangeWallpaper('');
@@ -834,7 +885,7 @@ begin
           Accessed := true;
         end;
 
-        if (Pos('<|IDEXISTS!REQUESTPASSWORD|>', s) > 0) then
+        if Buffer.Contains('<|IDEXISTS!REQUESTPASSWORD|>') then
         begin
           Synchronize(
             procedure
@@ -847,7 +898,7 @@ begin
             end);
         end;
 
-        if (Pos('<|IDNOTEXISTS|>', s) > 0) then
+        if Buffer.Contains('<|IDNOTEXISTS|>') then
         begin
           Synchronize(
             procedure
@@ -863,7 +914,7 @@ begin
             end);
         end;
 
-        if (Pos('<|ACCESSDENIED|>', s) > 0) then
+        if Buffer.Contains('<|ACCESSDENIED|>') then
         begin
           Synchronize(
             procedure
@@ -880,7 +931,7 @@ begin
             end);
         end;
 
-        if (Pos('<|ACCESSBUSY|>', s) > 0) then
+        if Buffer.Contains('<|ACCESSBUSY|>') then
         begin
           Synchronize(
             procedure
@@ -897,7 +948,7 @@ begin
             end);
         end;
 
-        if (Pos('<|ACCESSGRANTED|>', s) > 0) then
+        if Buffer.Contains('<|ACCESSGRANTED|>') then
         begin
           Synchronize(
             procedure
@@ -918,7 +969,7 @@ begin
             end);
         end;
 
-        if (Pos('<|DISCONNECTED|>', s) > 0) then
+        if Buffer.Contains('<|DISCONNECTED|>') then
         begin
           Synchronize(
             procedure
@@ -940,115 +991,147 @@ begin
         { Redirected commands }
 
         // Desktop Remote
-        if (Pos('<|RESOLUTION|>', s) > 0) then
+        Position := Pos('<|RESOLUTION|>', Buffer);
+        if Position > 0 then
         begin
-          s2 := s;
-          Delete(s2, 1, Pos('<|RESOLUTION|>', s2) + 13);
+          BufferTemp := Buffer;
 
-          frm_Main.ResolutionTargetWidth := strToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
-          Delete(s2, 1, Pos('<|>', s2) + 2);
+          Delete(BufferTemp, 1, Position + 13);
 
-          frm_Main.ResolutionTargetHeight := strToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
+          Position                       := Pos('<|>', BufferTemp);
+          frm_Main.ResolutionTargetWidth := strToInt(Copy(BufferTemp, 1, Position - 1));
+
+          Delete(BufferTemp, 1, Position + 2);
+
+          frm_Main.ResolutionTargetHeight := strToInt(Copy(BufferTemp, 1, Pos('<<|', BufferTemp) - 1));
         end;
 
-        if (Pos('<|SETMOUSEPOS|>', s) > 0) then
+        Position := Pos('<|SETMOUSEPOS|>', Buffer);
+        if Position > 0 then
         begin
-          s2 := s;
-          Delete(s2, 1, Pos('<|SETMOUSEPOS|>', s2) + 14);
+          BufferTemp := Buffer;
 
-          MousePosX := strToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
-          Delete(s2, 1, Pos('<|>', s2) + 2);
+          Delete(BufferTemp, 1, Position + 14);
 
-          MousePosY := strToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
+          Position  := Pos('<|>', BufferTemp);
+          MousePosX := strToInt(Copy(BufferTemp, 1, Position - 1));
+
+          Delete(BufferTemp, 1, Position + 2);
+
+          MousePosY := strToInt(Copy(BufferTemp, 1, Pos('<<|', BufferTemp) - 1));
 
           SetCursorPos(MousePosX, MousePosY);
         end;
 
-        if (Pos('<|SETMOUSELEFTCLICKDOWN|>', s) > 0) then
+        Position := Pos('<|SETMOUSELEFTCLICKDOWN|>', Buffer);
+        if Position > 0 then
         begin
-          s2 := s;
-          Delete(s2, 1, Pos('<|SETMOUSELEFTCLICKDOWN|>', s2) + 24);
+          BufferTemp := Buffer;
 
-          MousePosX := strToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
-          Delete(s2, 1, Pos('<|>', s2) + 2);
+          Delete(BufferTemp, 1, Position + 24);
 
-          MousePosY := strToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
+          Position  := Pos('<|>', BufferTemp);
+          MousePosX := strToInt(Copy(BufferTemp, 1, Position - 1));
+
+          Delete(BufferTemp, 1, Position + 2);
+
+          MousePosY := strToInt(Copy(BufferTemp, 1, Pos('<<|', BufferTemp) - 1));
 
           SetCursorPos(MousePosX, MousePosY);
           Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
         end;
 
-        if (Pos('<|SETMOUSELEFTCLICKUP|>', s) > 0) then
+        Position := Pos('<|SETMOUSELEFTCLICKUP|>', Buffer);
+        if Position > 0 then
         begin
-          s2 := s;
-          Delete(s2, 1, Pos('<|SETMOUSELEFTCLICKUP|>', s2) + 22);
+          BufferTemp := Buffer;
 
-          MousePosX := strToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
-          Delete(s2, 1, Pos('<|>', s2) + 2);
+          Delete(BufferTemp, 1, Position + 22);
 
-          MousePosY := strToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
+          Position  := Pos('<|>', BufferTemp);
+          MousePosX := strToInt(Copy(BufferTemp, 1, Position - 1));
+
+          Delete(BufferTemp, 1, Position + 2);
+
+          MousePosY := strToInt(Copy(BufferTemp, 1, Pos('<<|', BufferTemp) - 1));
 
           SetCursorPos(MousePosX, MousePosY);
           Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
         end;
 
-        if (Pos('<|SETMOUSERIGHTCLICKDOWN|>', s) > 0) then
+        Position := Pos('<|SETMOUSERIGHTCLICKDOWN|>', Buffer);
+        if Position > 0 then
         begin
-          s2 := s;
-          Delete(s2, 1, Pos('<|SETMOUSERIGHTCLICKDOWN|>', s2) + 25);
+          BufferTemp := Buffer;
 
-          MousePosX := strToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
-          Delete(s2, 1, Pos('<|>', s2) + 2);
+          Delete(BufferTemp, 1, Position + 25);
 
-          MousePosY := strToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
+          Position  := Pos('<|>', BufferTemp);
+          MousePosX := strToInt(Copy(BufferTemp, 1, Position - 1));
+
+          Delete(BufferTemp, 1, Position + 2);
+
+          MousePosY := strToInt(Copy(BufferTemp, 1, Pos('<<|', BufferTemp) - 1));
 
           SetCursorPos(MousePosX, MousePosY);
           Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0);
         end;
 
-        if (Pos('<|SETMOUSERIGHTCLICKUP|>', s) > 0) then
+        Position := Pos('<|SETMOUSERIGHTCLICKUP|>', Buffer);
+        if Position > 0 then
         begin
-          s2 := s;
-          Delete(s2, 1, Pos('<|SETMOUSERIGHTCLICKUP|>', s2) + 23);
+          BufferTemp := Buffer;
 
-          MousePosX := strToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
-          Delete(s2, 1, Pos('<|>', s2) + 2);
+          Delete(BufferTemp, 1, Position + 23);
 
-          MousePosY := strToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
+          Position  := Pos('<|>', BufferTemp);
+          MousePosX := strToInt(Copy(BufferTemp, 1, Position - 1));
+
+          Delete(BufferTemp, 1, Position + 2);
+
+          MousePosY := strToInt(Copy(BufferTemp, 1, Pos('<<|', BufferTemp) - 1));
 
           SetCursorPos(MousePosX, MousePosY);
           Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0);
         end;
 
-        if (Pos('<|SETMOUSEMIDDLEDOWN|>', s) > 0) then
+        Position := Pos('<|SETMOUSEMIDDLEDOWN|>', Buffer);
+        if Position > 0 then
         begin
-          s2 := s;
-          Delete(s2, 1, Pos('<|SETMOUSEMIDDLEDOWN|>', s2) + 21);
+          BufferTemp := Buffer;
 
-          MousePosX := strToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
-          Delete(s2, 1, Pos('<|>', s2) + 2);
+          Delete(BufferTemp, 1, Position + 21);
 
-          MousePosY := strToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
+          Position  := Pos('<|>', BufferTemp);
+          MousePosX := strToInt(Copy(BufferTemp, 1, Position - 1));
+
+          Delete(BufferTemp, 1, Position + 2);
+
+          MousePosY := strToInt(Copy(BufferTemp, 1, Pos('<<|', BufferTemp) - 1));
 
           SetCursorPos(MousePosX, MousePosY);
           Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_MIDDLEDOWN, 0, 0, 0, 0);
         end;
 
-        if (Pos('<|SETMOUSEMIDDLEUP|>', s) > 0) then
+        Position := Pos('<|SETMOUSEMIDDLEUP|>', Buffer);
+        if Position > 0 then
         begin
-          s2 := s;
-          Delete(s2, 1, Pos('<|SETMOUSEMIDDLEUP|>', s2) + 19);
+          BufferTemp := Buffer;
 
-          MousePosX := strToInt(Copy(s2, 1, Pos('<|>', s2) - 1));
-          Delete(s2, 1, Pos('<|>', s2) + 2);
+          Delete(BufferTemp, 1, Position + 19);
 
-          MousePosY := strToInt(Copy(s2, 1, Pos('<<|', s2) - 1));
+          Position  := Pos('<|>', BufferTemp);
+          MousePosX := strToInt(Copy(BufferTemp, 1, Position - 1));
+
+          Delete(BufferTemp, 1, Position + 2);
+
+          MousePosY := strToInt(Copy(BufferTemp, 1, Pos('<<|', BufferTemp) - 1));
 
           SetCursorPos(MousePosX, MousePosY);
           Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_MIDDLEUP, 0, 0, 0, 0);
         end;
 
-        if (Pos('<|SETMOUSEDOUBLECLICK|>', s) > 0) then
+        if Buffer.Contains('<|SETMOUSEDOUBLECLICK|>') then
         begin
           Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
           Sleep(10);
@@ -1059,38 +1142,45 @@ begin
           Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
         end;
 
-        if (Pos('<|WHEELMOUSE|>', s) > 0) then
+        Position := Pos('<|WHEELMOUSE|>', Buffer);
+        if Position > 0 then
         begin
-          s2 := s;
-          Delete(s2, 1, Pos('<|WHEELMOUSE|>', s2) + 13);
+          BufferTemp := Buffer;
 
-          s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
-          Mouse_Event(MOUSEEVENTF_WHEEL, 0, 0, DWORD(strToInt(s2)), 0);
+          Delete(BufferTemp, 1, Position + 13);
+
+          BufferTemp := Copy(BufferTemp, 1, Pos('<<|', BufferTemp) - 1);
+          Mouse_Event(MOUSEEVENTF_WHEEL, 0, 0, DWORD(strToInt(BufferTemp)), 0);
         end;
 
         // Clipboard Remote
-        if (Pos('<|CLIPBOARD|>', s) > 0) then
+        Position := Pos('<|CLIPBOARD|>', Buffer);
+        if Position > 0 then
         begin
-          s2 := s;
-          Delete(s2, 1, Pos('<|CLIPBOARD|>', s2) + 12);
+          BufferTemp := Buffer;
 
-          s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
+          Delete(BufferTemp, 1, Position + 12);
+
+          BufferTemp := Copy(BufferTemp, 1, Pos('<<|', BufferTemp) - 1);
 
           try
             Clipboard.Open;
-            Clipboard.AsText := s2;
+            Clipboard.AsText := BufferTemp;
           finally
             Clipboard.Close;
           end;
         end;
 
         // Chat
-        if (Pos('<|CHAT|>', s) > 0) then
+        Position := Pos('<|CHAT|>', Buffer);
+        if Position > 0 then
         begin
-          s2 := s;
-          Delete(s2, 1, Pos('<|CHAT|>', s2) + 7);
+          BufferTemp := Buffer;
 
-          s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
+          Delete(BufferTemp, 1, Position + 7);
+
+          BufferTemp := Copy(BufferTemp, 1, Pos('<<|', BufferTemp) - 1);
+
           Synchronize(
             procedure
             begin
@@ -1116,14 +1206,14 @@ begin
 
                   Chat_RichEdit.SelStart := Chat_RichEdit.GetTextLen;
                   Chat_RichEdit.SelAttributes.Color := clWhite;
-                  Chat_RichEdit.SelText := '   •   ' + s2;
+                  Chat_RichEdit.SelText := '   •   ' + BufferTemp;
                 end
                 else
                 begin
                   Chat_RichEdit.SelStart := Chat_RichEdit.GetTextLen;
                   Chat_RichEdit.SelAttributes.Style := [];
                   Chat_RichEdit.SelAttributes.Color := clWhite;
-                  Chat_RichEdit.SelText := #13 + '   •   ' + s2;
+                  Chat_RichEdit.SelText := #13 + '   •   ' + BufferTemp;
                 end;
 
                 SendMessage(Chat_RichEdit.Handle, WM_VSCROLL, SB_BOTTOM, 0);
@@ -1146,47 +1236,52 @@ begin
 
         // Share Files
         // Request Folder List
-        if (Pos('<|GETFOLDERS|>', s) > 0) then
+        Position := Pos('<|GETFOLDERS|>', Buffer);
+        if Position > 0 then
         begin
-          s2 := s;
-          Delete(s2, 1, Pos('<|GETFOLDERS|>', s2) + 13);
+          BufferTemp := Buffer;
 
-          s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
+          Delete(BufferTemp, 1, Position + 13);
 
-          Socket.SendText('<|REDIRECT|><|FOLDERLIST|>' + ListFolders(s2) + '<<|FOLDERLIST');
+          BufferTemp := Copy(BufferTemp, 1, Pos('<<|', BufferTemp) - 1);
+
+          Socket.SendText('<|REDIRECT|><|FOLDERLIST|>' + ListFolders(BufferTemp) + '<<|FOLDERLIST');
         end;
 
         // Request Files List
-        if (Pos('<|GETFILES|>', s) > 0) then
+        Position := Pos('<|GETFILES|>', Buffer);
+        if Position > 0 then
         begin
-          s2 := s;
-          Delete(s2, 1, Pos('<|GETFILES|>', s2) + 11);
+          BufferTemp := Buffer;
 
-          s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
+          Delete(BufferTemp, 1, Position + 11);
 
-          Socket.SendText('<|REDIRECT|><|FILESLIST|>' + ListFiles(s2, '*.*') + '<<|FILESLIST');
+          BufferTemp := Copy(BufferTemp, 1, Pos('<<|', BufferTemp) - 1);
+
+          Socket.SendText('<|REDIRECT|><|FILESLIST|>' + ListFiles(BufferTemp, '*.*') + '<<|FILESLIST');
         end;
 
         // Receive Folder List
-        if (Pos('<|FOLDERLIST|>', s) > 0) then
+        Position := Pos('<|FOLDERLIST|>', Buffer);
+        if Position > 0 then
         begin
 
           while Socket.Connected do
           begin
-            if (Pos('<<|FOLDERLIST', s) > 0) then
+            if Buffer.Contains('<<|FOLDERLIST') then
               break;
 
             if (Socket.ReceiveLength > 0) then
-              s := s + Socket.ReceiveText;
+              Buffer := Buffer + Socket.ReceiveText;
 
             Sleep(ProcessingSlack);
           end;
 
-          s2 := s;
-          Delete(s2, 1, Pos('<|FOLDERLIST|>', s2) + 13);
+          BufferTemp := Buffer;
+          Delete(BufferTemp, 1, Position + 13);
 
           FoldersAndFiles      := TStringList.Create;
-          FoldersAndFiles.Text := Copy(s2, 1, Pos('<<|', s2) - 1);
+          FoldersAndFiles.Text := Copy(BufferTemp, 1, Pos('<<|', BufferTemp) - 1);
           FoldersAndFiles.Sort;
 
           Synchronize(
@@ -1221,25 +1316,27 @@ begin
         end;
 
         // Receive Files List
-        if (Pos('<|FILESLIST|>', s) > 0) then
+        Position := Pos('<|FILESLIST|>', Buffer);
+        if Position > 0 then
         begin
 
           while Socket.Connected do
           begin
-            if (Pos('<<|FILESLIST', s) > 0) then
+            if Buffer.Contains('<<|FILESLIST') then
               break;
 
             if (Socket.ReceiveLength > 0) then
-              s := s + Socket.ReceiveText;
+              Buffer := Buffer + Socket.ReceiveText;
 
             Sleep(ProcessingSlack);
           end;
 
-          s2 := s;
-          Delete(s2, 1, Pos('<|FILESLIST|>', s2) + 12);
+          BufferTemp := Buffer;
+
+          Delete(BufferTemp, 1, Position + 12);
 
           FoldersAndFiles      := TStringList.Create;
-          FoldersAndFiles.Text := Copy(s2, 1, Pos('<<|', s2) - 1);
+          FoldersAndFiles.Text := Copy(BufferTemp, 1, Pos('<<|', BufferTemp) - 1);
           FoldersAndFiles.Sort;
 
           for i := 0 to FoldersAndFiles.count - 1 do
@@ -1301,22 +1398,24 @@ begin
 
         end;
 
-        if (Pos('<|UPLOADPROGRESS|>', s) > 0) then
+        Position := Pos('<|UPLOADPROGRESS|>', Buffer);
+        if Position > 0 then
         begin
-          s2 := s;
-          Delete(s2, 1, Pos('<|UPLOADPROGRESS|>', s2) + 17);
+          BufferTemp := Buffer;
 
-          s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
+          Delete(BufferTemp, 1, Position + 17);
+
+          BufferTemp := Copy(BufferTemp, 1, Pos('<<|', BufferTemp) - 1);
 
           Synchronize(
             procedure
             begin
-              frm_ShareFiles.Upload_ProgressBar.Position := strToInt(s2);
+              frm_ShareFiles.Upload_ProgressBar.Position := strToInt(BufferTemp);
               frm_ShareFiles.SizeUpload_Label.Caption := 'Size: ' + GetSize(frm_ShareFiles.Upload_ProgressBar.Position) + ' / ' + GetSize(frm_ShareFiles.Upload_ProgressBar.Max);
             end);
         end;
 
-        if (Pos('<|UPLOADCOMPLETE|>', s) > 0) then
+        if Buffer.Contains('<|UPLOADCOMPLETE|>') then
         begin
           Synchronize(
             procedure
@@ -1339,14 +1438,16 @@ begin
             end);
         end;
 
-        if (Pos('<|DOWNLOADFILE|>', s) > 0) then
+        Position := Pos('<|DOWNLOADFILE|>', Buffer);
+        if Position > 0 then
         begin
-          s2 := s;
-          Delete(s2, 1, Pos('<|DOWNLOADFILE|>', s2) + 15);
+          BufferTemp := Buffer;
 
-          s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
+          Delete(BufferTemp, 1, Position + 15);
 
-          FileToUpload := TFileStream.Create(s2, fmOpenRead);
+          BufferTemp := Copy(BufferTemp, 1, Pos('<<|', BufferTemp) - 1);
+
+          FileToUpload := TFileStream.Create(BufferTemp, fmOpenRead);
           frm_Main.Files_Socket.Socket.SendText('<|SIZE|>' + IntToStr(FileToUpload.Size) + '<<|');
           frm_Main.Files_Socket.Socket.SendStream(FileToUpload);
         end;
@@ -1362,97 +1463,106 @@ end;
 
 procedure TThread_Connection_Keyboard.Execute;
 var
-  s: string;
+  Buffer: string;
 begin
-  while (Socket.Connected) do
-  begin
 
-    if (Socket.ReceiveLength > 0) then
+  try
+
+    while Socket.Connected do
     begin
-      s := Socket.ReceiveText;
 
-      // Combo Keys
-      if (Pos('<|ALTDOWN|>', s) > 0) then
+      if Socket.ReceiveLength > 0 then
       begin
-        s := StringReplace(s, '<|ALTDOWN|>', '', [rfReplaceAll]);
-        keybd_event(18, 0, 0, 0);
-      end;
+        Buffer := Socket.ReceiveText;
 
-      if (Pos('<|ALTUP|>', s) > 0) then
-      begin
-        s := StringReplace(s, '<|ALTUP|>', '', [rfReplaceAll]);
-        keybd_event(18, 0, KEYEVENTF_KEYUP, 0);
-      end;
-
-      if (Pos('<|CTRLDOWN|>', s) > 0) then
-      begin
-        s := StringReplace(s, '<|CTRLDOWN|>', '', [rfReplaceAll]);
-        keybd_event(17, 0, 0, 0);
-      end;
-
-      if (Pos('<|CTRLUP|>', s) > 0) then
-      begin
-        s := StringReplace(s, '<|CTRLUP|>', '', [rfReplaceAll]);
-        keybd_event(17, 0, KEYEVENTF_KEYUP, 0);
-      end;
-
-      if (Pos('<|SHIFTDOWN|>', s) > 0) then
-      begin
-        s := StringReplace(s, '<|SHIFTDOWN|>', '', [rfReplaceAll]);
-        keybd_event(16, 0, 0, 0);
-      end;
-
-      if (Pos('<|SHIFTUP|>', s) > 0) then
-      begin
-        s := StringReplace(s, '<|SHIFTUP|>', '', [rfReplaceAll]);
-        keybd_event(16, 0, KEYEVENTF_KEYUP, 0);
-      end;
-
-      if (Pos('?', s) > 0) then
-      begin
-        if (GetKeyState(VK_SHIFT) < 0) then
+        // Combo Keys
+        if Buffer.Contains('<|ALTDOWN|>') then
         begin
-          keybd_event(16, 0, KEYEVENTF_KEYUP, 0);
-          SendKeys(PWideChar(s), False);
+          Buffer := StringReplace(Buffer, '<|ALTDOWN|>', '', [rfReplaceAll]);
+          keybd_event(18, 0, 0, 0);
+        end;
+
+        if Buffer.Contains('<|ALTUP|>') then
+        begin
+          Buffer := StringReplace(Buffer, '<|ALTUP|>', '', [rfReplaceAll]);
+          keybd_event(18, 0, KEYEVENTF_KEYUP, 0);
+        end;
+
+        if Buffer.Contains('<|CTRLDOWN|>') then
+        begin
+          Buffer := StringReplace(Buffer, '<|CTRLDOWN|>', '', [rfReplaceAll]);
+          keybd_event(17, 0, 0, 0);
+        end;
+
+        if Buffer.Contains('<|CTRLUP|>') then
+        begin
+          Buffer := StringReplace(Buffer, '<|CTRLUP|>', '', [rfReplaceAll]);
+          keybd_event(17, 0, KEYEVENTF_KEYUP, 0);
+        end;
+
+        if Buffer.Contains('<|SHIFTDOWN|>') then
+        begin
+          Buffer := StringReplace(Buffer, '<|SHIFTDOWN|>', '', [rfReplaceAll]);
           keybd_event(16, 0, 0, 0);
         end;
 
-      end
-      else
-        SendKeys(PWideChar(s), False);
+        if Buffer.Contains('<|SHIFTUP|>') then
+        begin
+          Buffer := StringReplace(Buffer, '<|SHIFTUP|>', '', [rfReplaceAll]);
+          keybd_event(16, 0, KEYEVENTF_KEYUP, 0);
+        end;
 
+        if Buffer.Contains('?') then
+        begin
+          if GetKeyState(VK_SHIFT) < 0 then
+          begin
+            keybd_event(16, 0, KEYEVENTF_KEYUP, 0);
+            SendKeys(PWideChar(Buffer), False);
+            keybd_event(16, 0, 0, 0);
+          end;
+
+        end
+        else
+          SendKeys(PWideChar(Buffer), False);
+
+      end;
+
+      Sleep(ProcessingSlack); // Avoids using 100% CPU
     end;
 
-    Sleep(ProcessingSlack); // Avoids using 100% CPU
+  except
   end;
+
 end;
 
 // Connection of Desktop screens
 procedure TThread_Connection_Desktop.Execute;
 var
-  s, s2: string;
-  MyFirstBmp, MySecondBmp, MyCompareBmp, UnPackStream, MyTempStream, PackStream: TMemoryStream;
-  ReceiveBmpSize, SendBMPSize: Int64;
-  ReceivingBmp               : Boolean;
+  Position      : Integer;
+  ReceiveBmpSize: Int64;
+  SendBMPSize   : Int64;
+  ReceivingBmp  : Boolean;
+  Buffer        : string;
+  TempBuffer    : string;
+  MyFirstBmp    : TMemoryStream;
+  PackStream    : TMemoryStream;
+  MyTempStream  : TMemoryStream;
+  UnPackStream  : TMemoryStream;
+  MyCompareBmp  : TMemoryStream;
+  MySecondBmp   : TMemoryStream;
+
 begin
   inherited;
 
-  MyFirstBmp   := nil;
-  MySecondBmp  := nil;
-  MyCompareBmp := nil;
-  UnPackStream := nil;
-  MyTempStream := nil;
-  PackStream   := nil;
+  MyFirstBmp   := TMemoryStream.Create;
+  UnPackStream := TMemoryStream.Create;
+  MyTempStream := TMemoryStream.Create;
+  MySecondBmp  := TMemoryStream.Create;
+  MyCompareBmp := TMemoryStream.Create;
+  PackStream   := TMemoryStream.Create;
+  ReceivingBmp := False;
 
   try
-
-    MyFirstBmp   := TMemoryStream.Create;
-    UnPackStream := TMemoryStream.Create;
-    MyTempStream := TMemoryStream.Create;
-    MySecondBmp  := TMemoryStream.Create;
-    MyCompareBmp := TMemoryStream.Create;
-    PackStream   := TMemoryStream.Create;
-    ReceivingBmp := False;
 
     while Socket.Connected do
     begin
@@ -1460,13 +1570,16 @@ begin
       Sleep(ProcessingSlack); // Avoids using 100% CPU
 
       try
-        if (Socket.ReceiveLength > 0) then
+        if Socket.ReceiveLength > 0 then
         begin
 
-          s := Socket.ReceiveText;
+          Buffer := Buffer + Socket.ReceiveText; // Accommodates in memory all images that are being received and not processed. This helps in smoothing and mapping so that changes in the wrong places do not occur.
 
-          if (Pos('<|GETFULLSCREENSHOT|>', s) > 0) then
+          Position := Pos('<|GETFULLSCREENSHOT|>', Buffer);
+          if Position > 0 then
           begin
+
+            Delete(Buffer, 1, Position + 20);
 
             ResolutionWidth  := Screen.Width;
             ResolutionHeight := Screen.Height;
@@ -1474,13 +1587,14 @@ begin
             frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|RESOLUTION|>' + IntToStr(Screen.Width) + '<|>' + IntToStr(Screen.Height) + '<<|');
 
             ReceiveBmpSize := 0;
+            ReceivingBmp   := False;
+
             MyFirstBmp.Clear;
             UnPackStream.Clear;
             MyTempStream.Clear;
             MySecondBmp.Clear;
             MyCompareBmp.Clear;
             PackStream.Clear;
-            ReceivingBmp := False;
 
             Synchronize(
               procedure
@@ -1492,15 +1606,41 @@ begin
             PackStream.LoadFromStream(MyFirstBmp);
 
             CompressStream(PackStream);
-            CompressStream(PackStream);
+            // CompressStream(PackStream);
 
             PackStream.Position := 0;
             SendBMPSize         := PackStream.Size;
 
-            Socket.SendText('<|SIZE|>' + IntToStr(SendBMPSize) + '<<|' + MemoryStreamToString(PackStream));
+            Socket.SendText('<|SIZE|>' + IntToStr(SendBMPSize) + '<|>' + MemoryStreamToString(PackStream) + '<<|');
+
+            while Socket.Connected do
+            begin
+
+              Sleep(ProcessingSlack);
+
+              Synchronize(
+                procedure
+                begin
+                  CompareStream(MyFirstBmp, MySecondBmp, MyCompareBmp, ResolutionWidth, ResolutionHeight);
+                end);
+
+              MyCompareBmp.Position := 0;
+              PackStream.LoadFromStream(MyCompareBmp);
+
+              CompressStream(PackStream);
+              // CompressStream(PackStream);
+
+              PackStream.Position := 0;
+              SendBMPSize         := PackStream.Size;
+
+              while Socket.SendText('<|SIZE|>' + IntToStr(SendBMPSize) + '<|>' + MemoryStreamToString(PackStream) + '<<|') < 0 do
+                Sleep(ProcessingSlack);
+
+            end;
+
           end;
 
-          if (Pos('<|GETPARTSCREENSHOT|>', s) > 0) then
+          if Buffer.Contains('<|GETPARTSCREENSHOT|>') then
           begin
             Synchronize(
               procedure
@@ -1512,88 +1652,108 @@ begin
             PackStream.LoadFromStream(MyCompareBmp);
 
             CompressStream(PackStream);
-            CompressStream(PackStream);
+            // CompressStream(PackStream);
 
             PackStream.Position := 0;
             SendBMPSize         := PackStream.Size;
-            Socket.SendText('<|SIZE|>' + IntToStr(SendBMPSize) + '<<|' + MemoryStreamToString(PackStream));
+
+            Socket.SendText('<|SIZE|>' + IntToStr(SendBMPSize) + '<|>' + MemoryStreamToString(PackStream) + '<<|');
           end;
 
-          if not(ReceivingBmp) then
+          // Processes all Buffer that is in memory.
+          while Buffer.Contains('<|SIZE|>') do
           begin
-            if (Pos('<|SIZE|>', s) > 0) then
-            begin
-              s2 := s;
-              Delete(s2, 1, Pos('<|SIZE|>', s2) + 7);
-              s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
-
-              ReceiveBmpSize := strToInt(s2);
-
-              Delete(s, 1, Pos('<<|', s) + 2);
-              ReceivingBmp := true;
-
-              Synchronize(
-                procedure
-                begin
-                  frm_RemoteScreen.Caption := 'AllaKore Remote - ' + GetSize(ReceiveBmpSize);
-                end);
-            end;
-          end;
-
-          if (Length(s) > 0) and (ReceivingBmp) then
-          begin
-            MyTempStream.Write(AnsiString(s)[1], Length(s));
-
-            if (MyTempStream.Size >= ReceiveBmpSize) then
+            if not(ReceivingBmp) then
             begin
 
-              Socket.SendText('<|GETPARTSCREENSHOT|>');
-
-              MyTempStream.Position := 0;
-              UnPackStream.Clear;
-              UnPackStream.LoadFromStream(MyTempStream);
-              DeCompressStream(UnPackStream);
-              DeCompressStream(UnPackStream);
-
-              if (MyFirstBmp.Size = 0) then
+              // Gets the image size
+              if (Pos('<|SIZE|>', Buffer) > 0) then
               begin
-                MyFirstBmp.CopyFrom(UnPackStream, 0);
-                MyFirstBmp.Position := 0;
+                TempBuffer := Buffer;
+                Delete(TempBuffer, 1, Pos('<|SIZE|>', TempBuffer) + 7);
+                TempBuffer := Copy(TempBuffer, 1, Pos('<|>', TempBuffer) - 1);
+
+                ReceiveBmpSize := strToInt(TempBuffer);
+
+                Delete(Buffer, 1, Pos('<|>', Buffer) + 2);
+                ReceivingBmp := true;
 
                 Synchronize(
                   procedure
                   begin
-                    frm_RemoteScreen.Screen_Image.Picture.Bitmap.LoadFromStream(MyFirstBmp);
-                    if (frm_RemoteScreen.Resize_CheckBox.Checked) then
-                      ResizeBmp(frm_RemoteScreen.Screen_Image.Picture.Bitmap, frm_RemoteScreen.Screen_Image.Width, frm_RemoteScreen.Screen_Image.Height);
-                    frm_RemoteScreen.Caption := 'AllaKore Remote';
+                    frm_RemoteScreen.Caption := 'AllaKore Remote - ' + GetSize(ReceiveBmpSize);
                   end);
 
-              end
-              else
-              begin
-                MyCompareBmp.Clear;
-                MySecondBmp.Clear;
-
-                MyCompareBmp.CopyFrom(UnPackStream, 0);
-                ResumeStream(MyFirstBmp, MySecondBmp, MyCompareBmp);
-
-                Synchronize(
-                  procedure
-                  begin
-                    frm_RemoteScreen.Screen_Image.Picture.Bitmap.LoadFromStream(MySecondBmp);
-                    if (frm_RemoteScreen.Resize_CheckBox.Checked) then
-                      ResizeBmp(frm_RemoteScreen.Screen_Image.Picture.Bitmap, frm_RemoteScreen.Screen_Image.Width, frm_RemoteScreen.Screen_Image.Height);
-                  end);
               end;
+            end;
 
-              ReceiveBmpSize := 0;
-              UnPackStream.Clear;
-              MyTempStream.Clear;
-              MySecondBmp.Clear;
-              MyCompareBmp.Clear;
-              PackStream.Clear;
-              ReceivingBmp := False;
+            if (Length(Buffer) > 0) and (ReceivingBmp) then
+            begin
+
+              // Checks if the image has been fully received and separates for decompression and pixel comparison.
+              Position := Pos('<<|', Buffer);
+              if Position > 0 then
+              begin
+
+                TempBuffer := Copy(Buffer, 1, Position - 1);
+                MyTempStream.Write(AnsiString(TempBuffer)[1], Length(TempBuffer));
+
+                Delete(Buffer, 1, Position + 2); // Clears the memory of the image that was processed.
+
+                MyTempStream.Position := 0;
+                UnPackStream.LoadFromStream(MyTempStream);
+
+                DeCompressStream(UnPackStream);
+                // DeCompressStream(UnPackStream);
+
+                if (MyFirstBmp.Size = 0) then
+                begin
+
+                  MyFirstBmp.LoadFromStream(UnPackStream);
+                  MyFirstBmp.Position := 0;
+
+                  Synchronize(
+                    procedure
+                    begin
+                      frm_RemoteScreen.Screen_Image.Picture.Bitmap.LoadFromStream(MyFirstBmp);
+
+                      if (frm_RemoteScreen.Resize_CheckBox.Checked) then
+                        ResizeBmp(frm_RemoteScreen.Screen_Image.Picture.Bitmap, frm_RemoteScreen.Screen_Image.Width, frm_RemoteScreen.Screen_Image.Height);
+
+                      frm_RemoteScreen.Caption := 'AllaKore Remote';
+                    end);
+
+                end
+                else
+                begin
+
+                  MyCompareBmp.Clear;
+                  MySecondBmp.Clear;
+
+                  MyCompareBmp.LoadFromStream(UnPackStream);
+                  ResumeStream(MyFirstBmp, MySecondBmp, MyCompareBmp);
+
+                  Synchronize(
+                    procedure
+                    begin
+                      frm_RemoteScreen.Screen_Image.Picture.Bitmap.LoadFromStream(MySecondBmp);
+
+                      if (frm_RemoteScreen.Resize_CheckBox.Checked) then
+                        ResizeBmp(frm_RemoteScreen.Screen_Image.Picture.Bitmap, frm_RemoteScreen.Screen_Image.Width, frm_RemoteScreen.Screen_Image.Height);
+
+                    end);
+                end;
+
+                ReceiveBmpSize := 0;
+                ReceivingBmp   := False;
+
+                UnPackStream.Clear;
+                MyTempStream.Clear;
+                MySecondBmp.Clear;
+                MyCompareBmp.Clear;
+                PackStream.Clear;
+
+              end;
 
             end;
 
@@ -1602,6 +1762,25 @@ begin
         end;
 
       except
+        On E: Exception do
+        begin
+
+          // If an error occurs, a new complete image will be requested to avoid any wrong image changes.
+
+          Buffer         := ''; // Clears all images that have been stored for processing.
+          ReceiveBmpSize := 0;
+          ReceivingBmp   := False;
+
+          UnPackStream.Clear;
+          MyTempStream.Clear;
+          MySecondBmp.Clear;
+          MyCompareBmp.Clear;
+          PackStream.Clear;
+
+          Socket.SendText('<|GETFULLSCREENSHOT|>');
+
+        end;
+
       end;
 
     end;
@@ -1621,17 +1800,19 @@ end;
 // Connection of Share Files
 procedure TThread_Connection_Files.Execute;
 var
-  ReceivingFile: Boolean;
+  Position     : Integer;
   FileSize     : Int64;
-  s, s2        : string;
+  ReceivingFile: Boolean;
+  Buffer       : string;
+  BufferTemp   : string;
   FileStream   : TFileStream;
 begin
   inherited;
 
-  try
+  ReceivingFile := False;
+  FileStream    := nil;
 
-    ReceivingFile := False;
-    FileStream    := nil;
+  try
 
     while Socket.Connected do
     begin
@@ -1641,28 +1822,34 @@ begin
       try
         if (Socket.ReceiveLength > 0) then
         begin
-          s := Socket.ReceiveText;
+          Buffer := Socket.ReceiveText;
 
           if not(ReceivingFile) then
           begin
 
-            if (Pos('<|DIRECTORYTOSAVE|>', s) > 0) then
+            Position := Pos('<|DIRECTORYTOSAVE|>', Buffer);
+            if Position > 0 then
             begin
-              s2 := s;
-              Delete(s2, 1, Pos('<|DIRECTORYTOSAVE|>', s2) + 18);
+              BufferTemp := Buffer;
 
-              s2 := Copy(s2, 1, Pos('<|>', s2) - 1);
+              Delete(BufferTemp, 1, Position + 18);
 
-              frm_ShareFiles.DirectoryToSaveFile := s2;
+              Position   := Pos('<|>', BufferTemp);
+              BufferTemp := Copy(BufferTemp, 1, Position - 1);
+
+              frm_ShareFiles.DirectoryToSaveFile := BufferTemp;
             end;
 
-            if (Pos('<|SIZE|>', s) > 0) then
+            Position := Pos('<|SIZE|>', Buffer);
+            if Position > 0 then
             begin
-              s2 := s;
-              Delete(s2, 1, Pos('<|SIZE|>', s2) + 7);
-              s2 := Copy(s2, 1, Pos('<<|', s2) - 1);
+              BufferTemp := Buffer;
 
-              FileSize   := strToInt(s2);
+              Delete(BufferTemp, 1, Position + 7);
+
+              BufferTemp := Copy(BufferTemp, 1, Pos('<<|', BufferTemp) - 1);
+
+              FileSize   := strToInt(BufferTemp);
               FileStream := TFileStream.Create(frm_ShareFiles.DirectoryToSaveFile + '.tmp', fmCreate or fmOpenReadWrite);
 
               if (frm_Main.Viewer) then
@@ -1674,23 +1861,29 @@ begin
                     frm_ShareFiles.SizeDownload_Label.Caption := 'Size: ' + GetSize(FileStream.Size) + ' / ' + GetSize(FileSize);
                   end);
 
-              Delete(s, 1, Pos('<<|', s) + 2);
+              Delete(Buffer, 1, Pos('<<|', Buffer) + 2);
               ReceivingFile := true;
             end;
           end;
 
-          if (Length(s) > 0) and (ReceivingFile) then
+          if (Length(Buffer) > 0) and (ReceivingFile) then
           begin
-            FileStream.Write(AnsiString(s)[1], Length(s));
+            FileStream.Write(AnsiString(Buffer)[1], Length(Buffer));
+
             if (frm_Main.Viewer) then
+
               Synchronize(
                 procedure
                 begin
                   frm_ShareFiles.Download_ProgressBar.Position := FileStream.Size;
                   frm_ShareFiles.SizeDownload_Label.Caption := 'Size: ' + GetSize(FileStream.Size) + ' / ' + GetSize(FileSize);
                 end)
+
             else
-              frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|UPLOADPROGRESS|>' + IntToStr(FileStream.Size) + '<<|');
+            begin
+              while frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|UPLOADPROGRESS|>' + IntToStr(FileStream.Size) + '<<|') < 0 do
+                Sleep(ProcessingSlack);
+            end;
 
             if (FileStream.Size = FileSize) then
             begin
@@ -1721,6 +1914,7 @@ begin
         end;
 
       except
+
       end;
 
     end;

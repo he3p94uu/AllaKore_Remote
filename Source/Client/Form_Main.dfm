@@ -7,6 +7,7 @@ object frm_Main: Tfrm_Main
   ClientHeight = 433
   ClientWidth = 344
   Color = clBtnFace
+  DoubleBuffered = True
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
   Font.Height = -11
@@ -14,6 +15,7 @@ object frm_Main: Tfrm_Main
   Font.Style = []
   OldCreateOrder = False
   Position = poScreenCenter
+  StyleElements = [seFont, seClient]
   OnClose = FormClose
   OnCreate = FormCreate
   PixelsPerInch = 96

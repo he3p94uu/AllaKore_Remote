@@ -15,6 +15,7 @@ object frm_Chat: Tfrm_Chat
   Position = poDesigned
   ScreenSnap = True
   SnapBuffer = 50
+  StyleElements = [seFont, seClient]
   OnCreate = FormCreate
   PixelsPerInch = 96
   TextHeight = 13

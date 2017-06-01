@@ -14,6 +14,7 @@ object frm_Password: Tfrm_Password
   Font.Style = []
   OldCreateOrder = False
   Position = poScreenCenter
+  StyleElements = [seFont, seClient]
   OnClose = FormClose
   OnCreate = FormCreate
   OnShow = FormShow

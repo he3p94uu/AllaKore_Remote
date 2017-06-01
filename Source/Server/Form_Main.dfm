@@ -89,6 +89,7 @@ object frm_Main: Tfrm_Main
     Port = 0
     ServerType = stNonBlocking
     OnClientConnect = Main_ServerSocketClientConnect
+    OnClientError = Main_ServerSocketClientError
     Left = 464
     Top = 152
   end

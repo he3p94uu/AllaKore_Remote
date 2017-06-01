@@ -88,10 +88,10 @@
     <PropertyGroup Condition="'$(Cfg_2_Win32)'!=''">
         <AppEnableAdministrator>true</AppEnableAdministrator>
         <AppEnableRuntimeThemes>true</AppEnableRuntimeThemes>
-        <VerInfo_Build>50</VerInfo_Build>
+        <VerInfo_Build>60</VerInfo_Build>
         <VerInfo_AutoIncVersion>true</VerInfo_AutoIncVersion>
         <VerInfo_Release>1</VerInfo_Release>
-        <VerInfo_Keys>CompanyName=AllaKore;FileDescription=AllaKore - Remote;FileVersion=1.0.1.50;InternalName=AllaKore - Remote;LegalCopyright=AllaKore;LegalTrademarks=AllaKore;OriginalFilename=AllaKore - Remote;ProductName=AllaKore - Remote;ProductVersion=1.0.0.0;Comments=Remote Access Open Source</VerInfo_Keys>
+        <VerInfo_Keys>CompanyName=AllaKore;FileDescription=AllaKore - Remote;FileVersion=1.0.1.60;InternalName=AllaKore - Remote;LegalCopyright=AllaKore;LegalTrademarks=AllaKore;OriginalFilename=AllaKore - Remote;ProductName=AllaKore - Remote;ProductVersion=1.0.0.0;Comments=Remote Access Open Source</VerInfo_Keys>
         <Icon_MainIcon>AllaKore_Remote_Client_Icon1.ico</Icon_MainIcon>
         <VerInfo_Locale>1033</VerInfo_Locale>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
@@ -123,7 +123,9 @@
         </DCCReference>
         <DCCReference Include="..\Units\sndkey32.pas"/>
         <DCCReference Include="..\Units\StreamManager.pas"/>
-        <DCCReference Include="..\Units\ZLIBEX.pas"/>
+        <DCCReference Include="..\Units\DelphiZlib\ZLibEx.pas"/>
+        <DCCReference Include="..\Units\DelphiZlib\ZLibExApi.pas"/>
+        <DCCReference Include="..\Units\DelphiZlib\ZLibExGZ.pas"/>
         <BuildConfiguration Include="Release">
             <Key>Cfg_2</Key>
             <CfgParent>Base</CfgParent>
