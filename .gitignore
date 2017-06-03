@@ -45,7 +45,11 @@ Temporary Items
 
 # Delphi Files
 *.dcu
+*.local
+*.tvsconfig
+*.identcache
 __history/
+
 
 # Bin
 *.exe

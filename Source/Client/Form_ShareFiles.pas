@@ -62,7 +62,7 @@ begin
     Directory_Edit.Text := Directory;
   end;
 
-  frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|GETFOLDERS|>' + Directory + '<<|');
+  frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|GETFOLDERS|>' + Directory + '<|END|>');
 end;
 
 procedure Tfrm_ShareFiles.Download_BitBtnClick(Sender: TObject);
@@ -77,7 +77,7 @@ begin
     if (SaveDialog1.Execute()) then
     begin
       DirectoryToSaveFile := SaveDialog1.FileName + ExtractFileExt(ShareFiles_ListView.Selected.Caption);
-      frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|DOWNLOADFILE|>' + Directory_Edit.Text + ShareFiles_ListView.Selected.Caption + '<<|');
+      frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|DOWNLOADFILE|>' + Directory_Edit.Text + ShareFiles_ListView.Selected.Caption + '<|END|>');
       Download_BitBtn.Enabled := false;
     end;
   end;
@@ -129,7 +129,7 @@ begin
     FileName               := ExtractFileName(OpenDialog1.FileName);
     Upload_ProgressBar.Max := FileStream.Size;
 
-    frm_Main.Files_Socket.Socket.SendText('<|DIRECTORYTOSAVE|>' + Directory_Edit.Text + FileName + '<|><|SIZE|>' + intToStr(FileStream.Size) + '<<|');
+    frm_Main.Files_Socket.Socket.SendText('<|DIRECTORYTOSAVE|>' + Directory_Edit.Text + FileName + '<|><|SIZE|>' + intToStr(FileStream.Size) + '<|END|>');
     FileStream.Position := 0;
     frm_Main.Files_Socket.Socket.SendStream(FileStream);
 

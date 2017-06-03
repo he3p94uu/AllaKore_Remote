@@ -1,29 +1,19 @@
 unit StreamManager;
-
+
 interface
 
 uses
   Windows, Classes, Graphics;
 
-procedure GetScreenToBmp(DrawCur: Boolean; StreamName: TMemoryStream; Width, Height: Integer);
+procedure GetScreenToMemoryStream(DrawCur: Boolean; TargetMemoryStream: TMemoryStream);
 
-procedure CompareStream(MyFirstStream, MySecondStream, MyCompareStream: TMemoryStream; Width, Height: Integer);
+procedure CompareStream(MyFirstStream, MySecondStream, MyCompareStream: TMemoryStream);
 
 procedure ResumeStream(MyFirstStream, MySecondStream, MyCompareStream: TMemoryStream);
 
-// function ResizeBmp(Bitmap: TBitmap; const NewWidth, NewHeight: integer): TBitmap;
 procedure ResizeBmp(bmp: TBitmap; Width, Height: Integer);
 
 implementation
-
-// Resize the Bitmap
-{ function ResizeBmp(Bitmap: TBitmap; const NewWidth, NewHeight: integer): TBitmap;
-  begin
-  Bitmap.Canvas.StretchDraw(Rect(0, 0, NewWidth, NewHeight), Bitmap);
-  Bitmap.SetSize(NewWidth, NewHeight);
-
-  Result := Bitmap;
-  end; }
 
 // Resize the Bitmap ( Best quality )
 procedure ResizeBmp(bmp: TBitmap; Width, Height: Integer);
@@ -50,7 +40,7 @@ begin
 end;
 
 // Screenshot
-procedure GetScreenToBmp(DrawCur: Boolean; StreamName: TMemoryStream; Width, Height: Integer);
+procedure GetScreenToMemoryStream(DrawCur: Boolean; TargetMemoryStream: TMemoryStream);
 var
   Mybmp           : TBitmap;
   Cursorx, Cursory: Integer;
@@ -66,7 +56,8 @@ var
 begin
   Mybmp := TBitmap.Create;
   Mycan := Tcanvas.Create;
-  dc    := GetWindowDC(0);
+
+  dc := GetWindowDC(0);
   try
     Mycan.Handle := dc;
     R            := Rect(0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN));
@@ -100,19 +91,21 @@ begin
   end;
   Mybmp.PixelFormat := pf8bit;
   // ResizeBMP(Mybmp, Width, Height);
-  Mybmp.SaveToStream(StreamName);
+  TargetMemoryStream.Clear;
+  Mybmp.SaveToStream(TargetMemoryStream);
   Mybmp.Free;
+
 end;
 
 // Compare Streams and separate when the Bitmap Pixels are equal.
-procedure CompareStream(MyFirstStream, MySecondStream, MyCompareStream: TMemoryStream; Width, Height: Integer);
+procedure CompareStream(MyFirstStream, MySecondStream, MyCompareStream: TMemoryStream);
 var
-  I         : Integer;
-  P1, P2, P3: ^AnsiChar;
+  I : Integer;
+  P1: ^AnsiChar;
+  P2: ^AnsiChar;
+  P3: ^AnsiChar;
 begin
-  MySecondStream.Clear;
   MyCompareStream.Clear;
-  GetScreenToBmp(True, MySecondStream, Width, Height);
 
   P1 := MyFirstStream.Memory;
   P2 := MySecondStream.Memory;
@@ -133,15 +126,16 @@ begin
 
   end;
 
-  MyFirstStream.Clear;
   MyFirstStream.LoadFromStream(MySecondStream);
 end;
 
 // Modifies Streams to set the Pixels of Bitmap
 procedure ResumeStream(MyFirstStream, MySecondStream, MyCompareStream: TMemoryStream);
 var
-  I         : Integer;
-  P1, P2, P3: ^AnsiChar;
+  I : Integer;
+  P1: ^AnsiChar;
+  P2: ^AnsiChar;
+  P3: ^AnsiChar;
 begin
   P1 := MyFirstStream.Memory;
   MySecondStream.SetSize(MyFirstStream.Size);
@@ -162,9 +156,9 @@ begin
 
   end;
 
-  MyFirstStream.Clear;
   MyFirstStream.LoadFromStream(MySecondStream);
   MySecondStream.Position := 0;
 end;
 
 end.
+
