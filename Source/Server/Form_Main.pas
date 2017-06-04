@@ -41,8 +41,8 @@ type
     Password           : string;
     TargetID           : string;
     TargetPassword     : string;
-    StartPing          : Integer;
-    EndPing            : Integer;
+    StartPing          : Int64;
+    EndPing            : Int64;
   public
     constructor Create(AThread: TCustomWinSocket); overload;
     procedure Execute; override;
@@ -128,7 +128,11 @@ end;
 constructor TThreadConnection_Main.Create(AThread: TCustomWinSocket);
 begin
   inherited Create(False);
-  AThread_Main    := AThread;
+  AThread_Main := AThread;
+
+  StartPing := 0;
+  EndPing   := 256;
+
   FreeOnTerminate := true;
 end;
 
@@ -845,6 +849,9 @@ begin
       begin
         Connection.AThread_Main.SendText('<|PING|>');
         Connection.StartPing := GetTickCount;
+
+        if Connections_ListView.Items.Item[i].SubItems[4] <> 'Calculating...' then
+          Connection.AThread_Main.SendText('<|SETPING|>' + IntToStr(Connection.EndPing) + '<|END|>');
       end;
 
       Inc(i);

@@ -108,6 +108,7 @@ type
   public
     MyID                  : string;
     MyPassword            : string;
+    MyPing                : Integer;
     Viewer                : Boolean;
     ResolutionTargetWidth : Integer;
     ResolutionTargetHeight: Integer;
@@ -666,6 +667,8 @@ begin
   ResolutionTargetWidth  := 986;
   ResolutionTargetHeight := 600;
 
+  MyPing := 256;
+
   SetOffline;
   Reconnect;
 end;
@@ -841,6 +844,18 @@ begin
         Socket.SendText('<|PONG|>');
       end;
 
+      Position := Pos('<|SETPING|>', Buffer);
+      if Position > 0 then
+      begin
+        BufferTemp := Buffer;
+
+        Delete(BufferTemp, 1, Position + 10);
+
+        BufferTemp := Copy(BufferTemp, 1, Pos('<|END|>', BufferTemp) - 1);
+
+        frm_Main.MyPing := StrToInt(BufferTemp);
+      end;
+
       // Warns access and remove Wallpaper
       if Buffer.Contains('<|ACCESSING|>') then
       begin
@@ -984,11 +999,11 @@ begin
         Delete(BufferTemp, 1, Position + 13);
 
         Position                       := Pos('<|>', BufferTemp);
-        frm_Main.ResolutionTargetWidth := strToInt(Copy(BufferTemp, 1, Position - 1));
+        frm_Main.ResolutionTargetWidth := StrToInt(Copy(BufferTemp, 1, Position - 1));
 
         Delete(BufferTemp, 1, Position + 2);
 
-        frm_Main.ResolutionTargetHeight := strToInt(Copy(BufferTemp, 1, Pos('<|END|>', BufferTemp) - 1));
+        frm_Main.ResolutionTargetHeight := StrToInt(Copy(BufferTemp, 1, Pos('<|END|>', BufferTemp) - 1));
       end;
 
       Position := Pos('<|SETMOUSEPOS|>', Buffer);
@@ -999,11 +1014,11 @@ begin
         Delete(BufferTemp, 1, Position + 14);
 
         Position  := Pos('<|>', BufferTemp);
-        MousePosX := strToInt(Copy(BufferTemp, 1, Position - 1));
+        MousePosX := StrToInt(Copy(BufferTemp, 1, Position - 1));
 
         Delete(BufferTemp, 1, Position + 2);
 
-        MousePosY := strToInt(Copy(BufferTemp, 1, Pos('<|END|>', BufferTemp) - 1));
+        MousePosY := StrToInt(Copy(BufferTemp, 1, Pos('<|END|>', BufferTemp) - 1));
 
         SetCursorPos(MousePosX, MousePosY);
       end;
@@ -1016,11 +1031,11 @@ begin
         Delete(BufferTemp, 1, Position + 24);
 
         Position  := Pos('<|>', BufferTemp);
-        MousePosX := strToInt(Copy(BufferTemp, 1, Position - 1));
+        MousePosX := StrToInt(Copy(BufferTemp, 1, Position - 1));
 
         Delete(BufferTemp, 1, Position + 2);
 
-        MousePosY := strToInt(Copy(BufferTemp, 1, Pos('<|END|>', BufferTemp) - 1));
+        MousePosY := StrToInt(Copy(BufferTemp, 1, Pos('<|END|>', BufferTemp) - 1));
 
         SetCursorPos(MousePosX, MousePosY);
         Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
@@ -1034,11 +1049,11 @@ begin
         Delete(BufferTemp, 1, Position + 22);
 
         Position  := Pos('<|>', BufferTemp);
-        MousePosX := strToInt(Copy(BufferTemp, 1, Position - 1));
+        MousePosX := StrToInt(Copy(BufferTemp, 1, Position - 1));
 
         Delete(BufferTemp, 1, Position + 2);
 
-        MousePosY := strToInt(Copy(BufferTemp, 1, Pos('<|END|>', BufferTemp) - 1));
+        MousePosY := StrToInt(Copy(BufferTemp, 1, Pos('<|END|>', BufferTemp) - 1));
 
         SetCursorPos(MousePosX, MousePosY);
         Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
@@ -1052,11 +1067,11 @@ begin
         Delete(BufferTemp, 1, Position + 25);
 
         Position  := Pos('<|>', BufferTemp);
-        MousePosX := strToInt(Copy(BufferTemp, 1, Position - 1));
+        MousePosX := StrToInt(Copy(BufferTemp, 1, Position - 1));
 
         Delete(BufferTemp, 1, Position + 2);
 
-        MousePosY := strToInt(Copy(BufferTemp, 1, Pos('<|END|>', BufferTemp) - 1));
+        MousePosY := StrToInt(Copy(BufferTemp, 1, Pos('<|END|>', BufferTemp) - 1));
 
         SetCursorPos(MousePosX, MousePosY);
         Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0);
@@ -1070,11 +1085,11 @@ begin
         Delete(BufferTemp, 1, Position + 23);
 
         Position  := Pos('<|>', BufferTemp);
-        MousePosX := strToInt(Copy(BufferTemp, 1, Position - 1));
+        MousePosX := StrToInt(Copy(BufferTemp, 1, Position - 1));
 
         Delete(BufferTemp, 1, Position + 2);
 
-        MousePosY := strToInt(Copy(BufferTemp, 1, Pos('<|END|>', BufferTemp) - 1));
+        MousePosY := StrToInt(Copy(BufferTemp, 1, Pos('<|END|>', BufferTemp) - 1));
 
         SetCursorPos(MousePosX, MousePosY);
         Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0);
@@ -1088,11 +1103,11 @@ begin
         Delete(BufferTemp, 1, Position + 21);
 
         Position  := Pos('<|>', BufferTemp);
-        MousePosX := strToInt(Copy(BufferTemp, 1, Position - 1));
+        MousePosX := StrToInt(Copy(BufferTemp, 1, Position - 1));
 
         Delete(BufferTemp, 1, Position + 2);
 
-        MousePosY := strToInt(Copy(BufferTemp, 1, Pos('<|END|>', BufferTemp) - 1));
+        MousePosY := StrToInt(Copy(BufferTemp, 1, Pos('<|END|>', BufferTemp) - 1));
 
         SetCursorPos(MousePosX, MousePosY);
         Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_MIDDLEDOWN, 0, 0, 0, 0);
@@ -1106,11 +1121,11 @@ begin
         Delete(BufferTemp, 1, Position + 19);
 
         Position  := Pos('<|>', BufferTemp);
-        MousePosX := strToInt(Copy(BufferTemp, 1, Position - 1));
+        MousePosX := StrToInt(Copy(BufferTemp, 1, Position - 1));
 
         Delete(BufferTemp, 1, Position + 2);
 
-        MousePosY := strToInt(Copy(BufferTemp, 1, Pos('<|END|>', BufferTemp) - 1));
+        MousePosY := StrToInt(Copy(BufferTemp, 1, Pos('<|END|>', BufferTemp) - 1));
 
         SetCursorPos(MousePosX, MousePosY);
         Mouse_Event(MOUSEEVENTF_ABSOLUTE or MOUSEEVENTF_MIDDLEUP, 0, 0, 0, 0);
@@ -1135,7 +1150,7 @@ begin
         Delete(BufferTemp, 1, Position + 13);
 
         BufferTemp := Copy(BufferTemp, 1, Pos('<|END|>', BufferTemp) - 1);
-        Mouse_Event(MOUSEEVENTF_WHEEL, 0, 0, DWORD(strToInt(BufferTemp)), 0);
+        Mouse_Event(MOUSEEVENTF_WHEEL, 0, 0, DWORD(StrToInt(BufferTemp)), 0);
       end;
 
       // Clipboard Remote
@@ -1396,7 +1411,7 @@ begin
         Synchronize(
           procedure
           begin
-            frm_ShareFiles.Upload_ProgressBar.Position := strToInt(BufferTemp);
+            frm_ShareFiles.Upload_ProgressBar.Position := StrToInt(BufferTemp);
             frm_ShareFiles.SizeUpload_Label.Caption := 'Size: ' + GetSize(frm_ShareFiles.Upload_ProgressBar.Position) + ' / ' + GetSize(frm_ShareFiles.Upload_ProgressBar.Max);
           end);
       end;
@@ -1594,7 +1609,17 @@ begin
           while Socket.Connected do
           begin
 
-            Sleep(ProcessingSlack);
+            with frm_Main do
+            begin
+
+              // Streaming Images is relative to ping. This reduces CPU consumption.
+              if MyPing > 30 then
+                Sleep(MyPing div 2)
+              else
+                Sleep(30);
+              //
+
+            end;
 
             Synchronize(
               procedure
@@ -1603,7 +1628,6 @@ begin
               end);
 
             CompareStream(MyFirstBmp, MySecondBmp, MyCompareBmp);
-            // MySecondBmp.Clear;
 
             MyCompareBmp.Position := 0;
             PackStream.LoadFromStream(MyCompareBmp);
@@ -1674,7 +1698,7 @@ begin
                   if (frm_RemoteScreen.Resize_CheckBox.Checked) then
                     ResizeBmp(frm_RemoteScreen.Screen_Image.Picture.Bitmap, frm_RemoteScreen.Screen_Image.Width, frm_RemoteScreen.Screen_Image.Height);
 
-                  frm_RemoteScreen.Caption := 'AllaKore Remote';
+                  frm_RemoteScreen.Caption := 'AllaKore Remote (Ping: ' + IntToStr(frm_Main.MyPing) + ' ms)';
                 end);
 
             end
@@ -1695,6 +1719,7 @@ begin
                   if (frm_RemoteScreen.Resize_CheckBox.Checked) then
                     ResizeBmp(frm_RemoteScreen.Screen_Image.Picture.Bitmap, frm_RemoteScreen.Screen_Image.Width, frm_RemoteScreen.Screen_Image.Height);
 
+                  frm_RemoteScreen.Caption := 'AllaKore Remote (Ping: ' + IntToStr(frm_Main.MyPing) + ' ms)';
                 end);
             end;
 
@@ -1786,7 +1811,7 @@ begin
 
             BufferTemp := Copy(BufferTemp, 1, Pos('<|END|>', BufferTemp) - 1);
 
-            FileSize   := strToInt(BufferTemp);
+            FileSize   := StrToInt(BufferTemp);
             FileStream := TFileStream.Create(frm_ShareFiles.DirectoryToSaveFile + '.tmp', fmCreate or fmOpenReadWrite);
 
             if (frm_Main.Viewer) then
