@@ -1613,7 +1613,7 @@ begin
             begin
 
               // Streaming Images is relative to ping. This reduces CPU consumption.
-              if MyPing > 30 then
+              if MyPing > 60 then
                 Sleep(MyPing div 2)
               else
                 Sleep(30);
