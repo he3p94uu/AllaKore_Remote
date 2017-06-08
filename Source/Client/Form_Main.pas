@@ -521,7 +521,7 @@ begin
     count := InputStream.Size;
     getmem(inbuffer, count);
     InputStream.ReadBuffer(inbuffer^, count);
-    zcompress(inbuffer, count, outbuffer, outcount, zcMax);
+    zcompress(inbuffer, count, outbuffer, outcount, zcDefault);
     OutputStream.Write(outbuffer^, outcount);
     SrcStream.Clear;
     SrcStream.LoadFromStream(OutputStream);
