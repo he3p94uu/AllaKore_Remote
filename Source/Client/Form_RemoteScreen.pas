@@ -1,4 +1,6 @@
-unit Form_RemoteScreen;
+{$D+}
+{$L+}
+unit Form_RemoteScreen;
 
 interface
 
@@ -378,9 +380,10 @@ begin
 
   frm_Main.Main_Socket.Socket.SendText('<|STOPACCESS|>');
 
-  frm_Main.SetOnline;
-
-  frm_Main.Show;
+    frm_Main.SetOffline;
+    frm_Main.CloseSockets;
+    frm_Main.Reconnect;
+    frm_Main.ReconnectSecundarySockets;
 
 end;
 
@@ -401,6 +404,8 @@ begin
   CtrlPressed  := false;
   ShiftPressed := false;
   AltPressed   := false;
+
+  frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|SCREEN|><<|END|>');
 end;
 
 procedure Tfrm_RemoteScreen.KeyboardRemote_CheckBoxClick(Sender: TObject);

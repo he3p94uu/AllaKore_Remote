@@ -16,6 +16,7 @@ object frm_Chat: Tfrm_Chat
   ScreenSnap = True
   SnapBuffer = 50
   StyleElements = [seFont, seClient]
+OnClose = FormClose
   OnCreate = FormCreate
   PixelsPerInch = 96
   TextHeight = 13

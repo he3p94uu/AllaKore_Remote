@@ -14,6 +14,7 @@ object frm_ShareFiles: Tfrm_ShareFiles
   OldCreateOrder = False
   Position = poScreenCenter
   StyleElements = [seFont, seClient]
+  OnClose = FormClose
   OnCreate = FormCreate
   OnShow = FormShow
   PixelsPerInch = 96
@@ -144,6 +145,15 @@ object frm_ShareFiles: Tfrm_ShareFiles
       Text = 'C:\'
       OnKeyPress = Directory_EditKeyPress
     end
+    object Button1: TButton
+      Left = 304
+      Top = 64
+      Width = 75
+      Height = 25
+      Caption = 'Button1'
+      TabOrder = 5
+      OnClick = Button1Click
+    end
   end
   object ImageList1: TImageList
     ColorDepth = cd32Bit
@@ -152,7 +162,7 @@ object frm_ShareFiles: Tfrm_ShareFiles
     Left = 440
     Top = 120
     Bitmap = {
-      494C010112008000B40030003000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
+      494C010112008000B80030003000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000C0000000F0000000010020000000000000D0
       0200000000000000000000000000000000000000000000000000000000000000
       000000000000000000000000000007081D271D2785B02834B7F32A38C0FF2A38

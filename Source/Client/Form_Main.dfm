@@ -12883,6 +12883,19 @@ object frm_Main: Tfrm_Main
     Text = '   -   -   '
     OnKeyPress = TargetID_MaskEditKeyPress
   end
+  object ConnectType: TComboBox
+    Left = 143
+    Top = 240
+    Width = 145
+    Height = 21
+    Style = csDropDownList
+    TabOrder = 4
+    Items.Strings = (
+      #1059#1076#1072#1083#1105#1085#1085#1099#1081' '#1101#1082#1088#1072#1085
+      #1054#1073#1086#1079#1088#1077#1074#1072#1090#1077#1083#1100' '#1092#1072#1081#1083#1086#1074
+      #1050#1086#1084#1072#1085#1076#1085#1072#1103' '#1089#1090#1088#1086#1082#1072
+      #1063#1072#1090)
+  end
   object Reconnect_Timer: TTimer
     Interval = 5000
     OnTimer = Reconnect_TimerTimer
@@ -12906,8 +12919,8 @@ object frm_Main: Tfrm_Main
     Port = 0
     OnConnect = Desktop_SocketConnect
     OnError = Desktop_SocketError
-    Left = 112
-    Top = 328
+    Left = 96
+    Top = 344
   end
   object ApplicationEvents1: TApplicationEvents
     Left = 280
@@ -12919,7 +12932,7 @@ object frm_Main: Tfrm_Main
     Port = 0
     OnConnect = Keyboard_SocketConnect
     OnError = Keyboard_SocketError
-    Left = 168
+    Left = 136
     Top = 344
   end
   object Files_Socket: TClientSocket
@@ -12928,8 +12941,8 @@ object frm_Main: Tfrm_Main
     Port = 0
     OnConnect = Files_SocketConnect
     OnError = Files_SocketError
-    Left = 224
-    Top = 328
+    Left = 176
+    Top = 344
   end
   object Timeout_Timer: TTimer
     Enabled = False
@@ -12941,5 +12954,14 @@ object frm_Main: Tfrm_Main
     OnTimer = Clipboard_TimerTimer
     Left = 240
     Top = 224
+  end
+  object Terminal_Socket: TClientSocket
+    Active = False
+    ClientType = ctNonBlocking
+    Port = 0
+    OnConnect = Terminal_SocketConnect
+    OnError = Terminal_SocketError
+    Left = 216
+    Top = 344
   end
 end

@@ -52,6 +52,12 @@ type
     procedure Execute; override;
   end;
 
+  TThread_Connection_Terminal = class(TThread)
+    Socket: TCustomWinSocket;
+    constructor Create(aSocket: TCustomWinSocket); overload;
+    procedure Execute; override;
+  end;
+
 type
   Tfrm_Main = class(TForm)
     TopBackground_Image: TImage;
@@ -84,6 +90,8 @@ type
     About_BitBtn: TBitBtn;
     TargetID_MaskEdit: TMaskEdit;
     Clipboard_Timer: TTimer;
+    ConnectType: TComboBox;
+    Terminal_Socket: TClientSocket;
     procedure Connect_BitBtnClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure Reconnect_TimerTimer(Sender: TObject);
@@ -103,6 +111,9 @@ type
     procedure About_BitBtnClick(Sender: TObject);
     procedure TargetID_MaskEditKeyPress(Sender: TObject; var Key: Char);
     procedure Clipboard_TimerTimer(Sender: TObject);
+    procedure Terminal_SocketError(Sender: TObject; Socket: TCustomWinSocket;
+      ErrorEvent: TErrorEvent; var ErrorCode: Integer);
+    procedure Terminal_SocketConnect(Sender: TObject; Socket: TCustomWinSocket);
   private
     { Private declarations }
   public
@@ -113,10 +124,11 @@ type
     ResolutionTargetWidth : Integer;
     ResolutionTargetHeight: Integer;
 
-    Thread_Connection_Main    : TThread_Connection_Main;
-    Thread_Connection_Desktop : TThread_Connection_Desktop;
+    Thread_Connection_Main: TThread_Connection_Main;
+    Thread_Connection_Desktop: TThread_Connection_Desktop;
     Thread_Connection_Keyboard: TThread_Connection_Keyboard;
-    Thread_Connection_Files   : TThread_Connection_Files;
+    Thread_Connection_Files: TThread_Connection_Files;
+    Thread_Connection_Terminal: TThread_Connection_Terminal;
 
     procedure ClearConnection;
     procedure SetOffline;
@@ -128,65 +140,73 @@ type
   end;
 
 var
-  frm_Main        : Tfrm_Main;
-  ResolutionWidth : Integer;
+  frm_Main: Tfrm_Main;
+  ResolutionWidth: Integer;
   ResolutionHeight: Integer;
-  Timeout         : Integer;
-  OldWallpaper    : string;
+  Timeout: Integer;
+  OldWallpaper: string;
   OldClipboardText: string;
-  Accessed        : Boolean;
+  Accessed: Boolean;
 
 const
   Host              = 'localhost'; // Host of Sockets  (Insert the IP Address or DNS of your Server)
-  Port              = 3898;        // Port of Sockets
-  ConnectionTimeout = 60;          // Timeout of connection (in secound)
-  ProcessingSlack   = 2;           // Processing slack for Sleep Commands
+  Port = 3898; // Port of Sockets
+  ConnectionTimeout = 60; // Timeout of connection (in secound)
+  ProcessingSlack = 2; // Processing slack for Sleep Commands
 
 implementation
 
 {$R *.dfm}
 
 uses
-  Form_Password, Form_RemoteScreen, Form_Chat, Form_ShareFiles;
+  Form_Password, Form_RemoteScreen, Form_Chat, Form_ShareFiles,
+  Form_RemoteTerminal;
 
 constructor TThread_Connection_Main.Create(aSocket: TCustomWinSocket);
 begin
   inherited Create(False);
-  Socket          := aSocket;
+  Socket := aSocket;
   FreeOnTerminate := true;
 end;
 
 constructor TThread_Connection_Desktop.Create(aSocket: TCustomWinSocket);
 begin
   inherited Create(False);
-  Socket          := aSocket;
-  Accessed        := False;
+  Socket := aSocket;
+  Accessed := False;
   FreeOnTerminate := true;
 end;
 
 constructor TThread_Connection_Keyboard.Create(aSocket: TCustomWinSocket);
 begin
   inherited Create(False);
-  Socket          := aSocket;
+  Socket := aSocket;
   FreeOnTerminate := true;
 end;
 
 constructor TThread_Connection_Files.Create(aSocket: TCustomWinSocket);
 begin
   inherited Create(False);
-  Socket          := aSocket;
+  Socket := aSocket;
+  FreeOnTerminate := true;
+end;
+
+constructor TThread_Connection_Terminal.Create(aSocket: TCustomWinSocket);
+begin
+  inherited Create(False);
+  Socket := aSocket;
   FreeOnTerminate := true;
 end;
 
 // Get current Version
 function GetAppVersionStr: string;
 var
-  Exe         : string;
+  Exe: string;
   Size, Handle: DWORD;
-  Buffer      : TBytes;
-  FixedPtr    : PVSFixedFileInfo;
+  Buffer: TBytes;
+  FixedPtr: PVSFixedFileInfo;
 begin
-  Exe  := ParamStr(0);
+  Exe := ParamStr(0);
   Size := GetFileVersionInfoSize(PChar(Exe), Handle);
   if Size = 0 then
     RaiseLastOSError;
@@ -196,9 +216,9 @@ begin
   if not VerQueryValue(Buffer, '\', Pointer(FixedPtr), Size) then
     RaiseLastOSError;
   Result := Format('%d.%d.%d.%d', [LongRec(FixedPtr.dwFileVersionMS).Hi, // major
-    LongRec(FixedPtr.dwFileVersionMS).Lo,                                // minor
-    LongRec(FixedPtr.dwFileVersionLS).Hi,                                // release
-    LongRec(FixedPtr.dwFileVersionLS).Lo])                               // build
+    LongRec(FixedPtr.dwFileVersionMS).Lo, // minor
+    LongRec(FixedPtr.dwFileVersionLS).Hi, // release
+    LongRec(FixedPtr.dwFileVersionLS).Lo]) // build
 end;
 
 function GetWallpaperDirectory: string;
@@ -207,7 +227,7 @@ var
 begin
   Reg := nil;
   try
-    Reg         := TRegistry.Create;
+    Reg := TRegistry.Create;
     Reg.RootKey := HKEY_CURRENT_USER;
     Reg.OpenKey('Control Panel\Desktop', False);
     Result := Reg.ReadString('Wallpaper');
@@ -222,7 +242,7 @@ var
 begin
   Reg := nil;
   try
-    Reg         := TRegistry.Create;
+    Reg := TRegistry.Create;
     Reg.RootKey := HKEY_CURRENT_USER;
     Reg.OpenKey('Control Panel\Desktop', False);
     Reg.WriteString('Wallpaper', Directory);
@@ -232,6 +252,101 @@ begin
   end;
 end;
 
+function GetDosOutput(CommandLine: string; Work: string = 'C:\'): TStringList;
+var
+  SA: TSecurityAttributes;
+  SI: TStartupInfo;
+  PI: TProcessInformation;
+  StdOutPipeRead, StdOutPipeWrite: THandle;
+  WasOK: Boolean;
+  Buffer: array [0 .. 255] of AnsiChar;
+  BytesRead: Cardinal;
+  WorkDir: string;
+  buf: AnsiString;
+  bufS: TStringList;
+  Handle: Boolean;
+begin
+  with SA do
+  begin
+    nLength := SizeOf(SA);
+    bInheritHandle := true;
+    lpSecurityDescriptor := nil;
+  end;
+  CreatePipe(StdOutPipeRead, StdOutPipeWrite, @SA, 0);
+  try
+    with SI do
+    begin
+      FillChar(SI, SizeOf(SI), 0);
+      cb := SizeOf(SI);
+      dwFlags := STARTF_USESHOWWINDOW or STARTF_USESTDHANDLES;
+      wShowWindow := SW_HIDE;
+      hStdInput := GetStdHandle(STD_INPUT_HANDLE); // don't redirect stdin
+      hStdOutput := StdOutPipeWrite;
+      hStdError := StdOutPipeWrite;
+    end;
+    WorkDir := Work;
+    Handle := CreateProcess(nil, PChar('cmd.exe /C ' + CommandLine), nil, nil,
+      true, 0, nil, PChar(WorkDir), SI, PI);
+    CloseHandle(StdOutPipeWrite);
+    if Handle then
+      try
+        bufS := TStringList.Create;
+        repeat
+          WasOK := ReadFile(StdOutPipeRead, Buffer, 255, BytesRead, nil);
+          if BytesRead > 0 then
+          begin
+            Buffer[BytesRead] := #0;
+            buf := Buffer;
+            OemToCharBuffA(@buf[1], @buf[1], Length(buf));
+            bufS.Add(buf);
+          end;
+        until not WasOK or (BytesRead = 0);
+        Result := bufS;
+        WaitForSingleObject(PI.hProcess, INFINITE);
+      finally
+        CloseHandle(PI.hThread);
+        CloseHandle(PI.hProcess);
+      end;
+  finally
+    CloseHandle(StdOutPipeRead);
+  end;
+end;
+
+function ExecAndWait(const ExeName, Params: string; out ExitCode: Cardinal;
+  Timeout: Cardinal = MaxInt): Boolean;
+var
+  sui: TStartupInfo;
+  PI: TProcessInformation;
+begin
+  ZeroMemory(@sui, SizeOf(sui));
+  sui.cb := SizeOf(sui);
+  Win32Check(CreateProcess(PChar(ExeName), PChar(Params), nil, nil, False, 0,
+    nil, nil, sui, PI));
+  try
+    CloseHandle(PI.hThread);
+    Result := WaitForSingleObject(PI.hProcess, Timeout) = WAIT_OBJECT_0;
+    if Result then
+      Win32Check(GetExitCodeProcess(PI.hProcess, ExitCode));
+  finally
+    CloseHandle(PI.hProcess);
+  end;
+end;
+
+procedure ExecCommandLine(const Cmd: string);
+var
+  Dummy: Cardinal;
+begin
+  ExecAndWait(GetEnvironmentVariable('ComSpec'), '/C ' + Cmd, Dummy);
+end;
+
+function ArrayToString(const a: array of Char): string;
+begin
+  if Length(a) > 0 then
+    SetString(Result, PChar(@a[0]), Length(a))
+  else
+    Result := '';
+end;
+
 procedure Tfrm_Main.About_BitBtnClick(Sender: TObject);
 begin
   MessageBox(0, 'This software has created by Maickonn Richard and source code are free!' + #13 + #13'Any questions, contact-me: senjaxus@gmail.com' + #13#13 + 'My Github: https://www.github.com/Senjaxus', 'About AllaKore Remote', MB_ICONASTERISK + MB_TOPMOST);
@@ -239,7 +354,7 @@ end;
 
 procedure Tfrm_Main.ClearConnection;
 begin
-  frm_Main.ResolutionTargetWidth  := 986;
+  frm_Main.ResolutionTargetWidth := 986;
   frm_Main.ResolutionTargetHeight := 600;
 
   with frm_RemoteScreen do
@@ -248,26 +363,26 @@ begin
     KeyboardIcon_Image.Picture.Assign(KeyboardIcon_unchecked_Image.Picture);
     ResizeIcon_Image.Picture.Assign(ResizeIcon_checked_Image.Picture);
 
-    MouseRemote_CheckBox.Checked    := False;
+    MouseRemote_CheckBox.Checked := False;
     KeyboardRemote_CheckBox.Checked := False;
-    Resize_CheckBox.Checked         := true;
-    CaptureKeys_Timer.Enabled       := False;
+    Resize_CheckBox.Checked := true;
+    CaptureKeys_Timer.Enabled := False;
 
     Screen_Image.Picture.Assign(ScreenStart_Image.Picture);
 
-    Width  := 986;
+    Width := 986;
     Height := 646;
 
   end;
 
   with frm_ShareFiles do
   begin
-    Download_BitBtn.Enabled       := true;
-    Upload_BitBtn.Enabled         := true;
+    Download_BitBtn.Enabled := true;
+    Upload_BitBtn.Enabled := true;
     Download_ProgressBar.Position := 0;
-    Upload_ProgressBar.Position   := 0;
-    SizeDownload_Label.Caption    := 'Size: 0 B / 0 B';
-    SizeUpload_Label.Caption      := 'Size: 0 B / 0 B';
+    Upload_ProgressBar.Position := 0;
+    SizeDownload_Label.Caption := 'Size: 0 B / 0 B';
+    SizeUpload_Label.Caption := 'Size: 0 B / 0 B';
 
     Directory_Edit.Text := 'C:\';
     ShareFiles_ListView.Items.Clear;
@@ -278,20 +393,20 @@ begin
 
   with frm_Chat do
   begin
-    Width  := 230;
+    Width := 230;
     Height := 340;
 
     Left := Screen.WorkAreaWidth - Width;
-    Top  := Screen.WorkAreaHeight - Height;
+    Top := Screen.WorkAreaHeight - Height;
 
     Chat_RichEdit.Clear;
     YourText_Edit.Clear;
-    Chat_RichEdit.SelStart            := Chat_RichEdit.GetTextLen;
+    Chat_RichEdit.SelStart := Chat_RichEdit.GetTextLen;
     Chat_RichEdit.SelAttributes.Style := [fsBold];
     Chat_RichEdit.SelAttributes.Color := clWhite;
-    Chat_RichEdit.SelText             := 'AllaKore Remote - Chat' + #13 + #13;
+    Chat_RichEdit.SelText := 'AllaKore Remote - Chat' + #13 + #13;
 
-    FirstMessage      := true;
+    FirstMessage := true;
     LastMessageAreYou := False;
 
     if (Visible) then
@@ -336,12 +451,12 @@ end;
 // Function to List Folders
 function ListFolders(Directory: string): string;
 var
-  FileName  : string;
-  Filelist  : string;
-  Dirlist   : string;
-  Searchrec : TWin32FindData;
+  FileName: string;
+  Filelist: string;
+  Dirlist: string;
+  Searchrec: TWin32FindData;
   FindHandle: THandle;
-  ReturnStr : string;
+  ReturnStr: string;
 begin
   ReturnStr := '';
 
@@ -365,7 +480,7 @@ begin
     Winapi.Windows.FindClose(FindHandle);
   end;
   ReturnStr := (Dirlist);
-  Result    := ReturnStr;
+  Result := ReturnStr;
 end;
 
 // Function to List Files
@@ -373,9 +488,9 @@ function ListFiles(FileName, Ext: string): string;
 var
   SearchFile: TSearchRec;
   FindResult: Integer;
-  Arc       : TStrings;
+  Arc: TStrings;
 begin
-  Arc        := TStringList.Create;
+  Arc := TStringList.Create;
   FindResult := FindFirst(FileName + Ext, faArchive, SearchFile);
   try
     while FindResult = 0 do
@@ -402,17 +517,20 @@ procedure Tfrm_Main.ReconnectSecundarySockets;
 begin
   Viewer := False;
 
-  Thread_Connection_Desktop.Socket  := nil;
+  Thread_Connection_Desktop.Socket := nil;
   Thread_Connection_Keyboard.Socket := nil;
-  Thread_Connection_Files.Socket    := nil;
+  Thread_Connection_Files.Socket := nil;
+  Thread_Connection_Terminal.Socket := nil;
 
   Desktop_Socket.Socket.Close;
   Keyboard_Socket.Socket.Close;
   Files_Socket.Socket.Close;
+  Terminal_Socket.Socket.Close;
 
-  Desktop_Socket.Active  := true;
+  Desktop_Socket.Active := true;
   Keyboard_Socket.Active := true;
-  Files_Socket.Active    := true;
+  Files_Socket.Active := true;
+  Terminal_Socket.Active := true;
 end;
 
 procedure Tfrm_Main.CloseSockets;
@@ -422,6 +540,7 @@ begin
   Desktop_Socket.Close;
   Keyboard_Socket.Close;
   Files_Socket.Close;
+  Terminal_Socket.Close;
 
   Viewer := False;
 
@@ -429,7 +548,8 @@ begin
   if Accessed then
   begin
     Accessed := False;
-    ChangeWallpaper(OldWallpaper);
+    if trim(OldWallpaper) <> '' then
+      ChangeWallpaper(OldWallpaper);
   end;
 
   // Show main form and repaint
@@ -445,18 +565,21 @@ end;
 procedure Tfrm_Main.SetOffline;
 begin
 
-  YourID_Edit.Text    := 'Offline';
+  YourID_Edit.Text := 'Offline';
   YourID_Edit.Enabled := False;
 
-  YourPassword_Edit.Text    := 'Offline';
+  YourPassword_Edit.Text := 'Offline';
   YourPassword_Edit.Enabled := False;
+
+  ConnectType.ItemIndex := 0;
+  ConnectType.Enabled := False;
 
   TargetID_MaskEdit.Clear;
   TargetID_MaskEdit.Enabled := False;
 
   Connect_BitBtn.Enabled := False;
 
-  Timeout_Timer.Enabled   := False;
+  Timeout_Timer.Enabled := False;
   Clipboard_Timer.Enabled := False;
 
 end;
@@ -465,11 +588,14 @@ procedure SetConnected;
 begin
   with frm_Main do
   begin
-    YourID_Edit.Text    := 'Receiving...';
+    YourID_Edit.Text := 'Receiving...';
     YourID_Edit.Enabled := False;
 
-    YourPassword_Edit.Text    := 'Receiving...';
+    YourPassword_Edit.Text := 'Receiving...';
     YourPassword_Edit.Enabled := False;
+
+    ConnectType.ItemIndex := 0;
+    ConnectType.Enabled := False;
 
     TargetID_MaskEdit.Clear;
     TargetID_MaskEdit.Enabled := False;
@@ -481,11 +607,14 @@ end;
 procedure Tfrm_Main.SetOnline;
 begin
 
-  YourID_Edit.Text    := MyID;
+  YourID_Edit.Text := MyID;
   YourID_Edit.Enabled := true;
 
-  YourPassword_Edit.Text    := MyPassword;
+  YourPassword_Edit.Text := MyPassword;
   YourPassword_Edit.Enabled := true;
+
+  ConnectType.ItemIndex := 0;
+  ConnectType.Enabled := true;
 
   TargetID_MaskEdit.Clear;
   TargetID_MaskEdit.Enabled := true;
@@ -497,24 +626,24 @@ end;
 // Compress Stream with zLib
 function CompressStreamWithZLib(SrcStream: TMemoryStream): Boolean;
 var
-  InputStream    : TMemoryStream;
-  OutputStream   : TMemoryStream;
-  inbuffer       : Pointer;
-  outbuffer      : Pointer;
+  InputStream: TMemoryStream;
+  OutputStream: TMemoryStream;
+  inbuffer: Pointer;
+  outbuffer: Pointer;
   count, outcount: longint;
 begin
   Result := False;
 
-  InputStream  := nil;
+  InputStream := nil;
   OutputStream := nil;
-  inbuffer     := nil;
-  outbuffer    := nil;
+  inbuffer := nil;
+  outbuffer := nil;
 
   if not assigned(SrcStream) then
     Exit;
 
   try
-    InputStream  := TMemoryStream.Create;
+    InputStream := TMemoryStream.Create;
     OutputStream := TMemoryStream.Create;
 
     InputStream.LoadFromStream(SrcStream);
@@ -537,26 +666,26 @@ end;
 // Decompress Stream with zLib
 function DeCompressStreamWithZLib(SrcStream: TMemoryStream): Boolean;
 var
-  InputStream : TMemoryStream;
+  InputStream: TMemoryStream;
   OutputStream: TMemoryStream;
-  inbuffer    : Pointer;
-  outbuffer   : Pointer;
-  count       : longint;
-  outcount    : longint;
+  inbuffer: Pointer;
+  outbuffer: Pointer;
+  count: longint;
+  outcount: longint;
 begin
   Result := False;
 
-  InputStream  := nil;
+  InputStream := nil;
   OutputStream := nil;
-  inbuffer     := nil;
-  outbuffer    := nil;
+  inbuffer := nil;
+  outbuffer := nil;
 
   if not assigned(SrcStream) then
     Exit;
 
   try
     try
-      InputStream  := TMemoryStream.Create;
+      InputStream := TMemoryStream.Create;
       OutputStream := TMemoryStream.Create;
 
       InputStream.LoadFromStream(SrcStream);
@@ -594,7 +723,7 @@ begin
     begin
       Main_Socket.Socket.SendText('<|FINDID|>' + TargetID_MaskEdit.Text + '<|END|>');
       TargetID_MaskEdit.Enabled := False;
-      Connect_BitBtn.Enabled    := False;
+      Connect_BitBtn.Enabled := False;
       Status_Image.Picture.Assign(Image1.Picture);
       Status_Label.Caption := 'Finding the ID...';
     end;
@@ -628,8 +757,14 @@ end;
 procedure Tfrm_Main.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
   // Restore Wallpaper
-  if Accessed then
-    ChangeWallpaper(OldWallpaper);
+{  if (Accessed) then
+  begin
+    if trim(OldWallpaper) <> '' then
+      ChangeWallpaper(OldWallpaper);
+  end;  }
+
+   SetOffline;
+   CloseSockets;
 end;
 
 procedure Tfrm_Main.FormCreate(Sender: TObject);
@@ -663,8 +798,11 @@ begin
 
   Files_Socket.Host := _Host;
   Files_Socket.Port := _Port;
+
+  Terminal_Socket.Host := _Host;
+  Terminal_Socket.Port := _Port;
   //
-  ResolutionTargetWidth  := 986;
+  ResolutionTargetWidth := 986;
   ResolutionTargetHeight := 600;
 
   MyPing := 256;
@@ -743,6 +881,19 @@ begin
   end
 end;
 
+procedure Tfrm_Main.Terminal_SocketConnect(Sender: TObject;
+  Socket: TCustomWinSocket);
+begin
+  Socket.SendText('<|TERMINALSOCKET|>' + MyID + '<|END|>');
+  Thread_Connection_Terminal := TThread_Connection_Terminal.Create(Socket);
+end;
+
+procedure Tfrm_Main.Terminal_SocketError(Sender: TObject;
+  Socket: TCustomWinSocket; ErrorEvent: TErrorEvent; var ErrorCode: Integer);
+begin
+  ErrorCode := 0;
+end;
+
 procedure Tfrm_Main.Reconnect_TimerTimer(Sender: TObject);
 begin
   // Reconnect Sockets
@@ -777,22 +928,26 @@ end;
 // Connection are Main
 procedure TThread_Connection_Main.Execute;
 var
-  Buffer         : string;
-  BufferTemp     : string;
-  Extension      : string;
-  i              : Integer;
-  Position       : Integer;
-  MousePosX      : Integer;
-  MousePosY      : Integer;
+  Buffer: string;
+  BufferTemp: string;
+  Extension: string;
+  i: Integer;
+  Position: Integer;
+  MousePosX: Integer;
+  MousePosY: Integer;
   FoldersAndFiles: TStringList;
-  L              : TListItem;
-  FileToUpload   : TFileStream;
-
+  L: TListItem;
+  FileToUpload: TFileStream;
+  // Extension: string;
+  p: TPoint;
+  strList: TStringList;
+  TerminalOutput: TMemoryStream;
+  Size: Integer;
 begin
   inherited;
 
   FoldersAndFiles := nil;
-  FileToUpload    := nil;
+  FileToUpload := nil;
 
   while Socket.Connected do
   begin
@@ -815,7 +970,7 @@ begin
         BufferTemp := Buffer;
         Delete(BufferTemp, 1, Position + 5);
 
-        Position      := Pos('<|>', BufferTemp);
+        Position := Pos('<|>', BufferTemp);
         frm_Main.MyID := Copy(BufferTemp, 1, Position - 1);
         Delete(BufferTemp, 1, Position + 2);
 
@@ -832,6 +987,7 @@ begin
               Desktop_Socket.Active := true;
               Keyboard_Socket.Active := true;
               Files_Socket.Active := true;
+              Terminal_Socket.Active := true;
 
               TargetID_MaskEdit.SetFocus;
             end;
@@ -859,9 +1015,6 @@ begin
       // Warns access and remove Wallpaper
       if Buffer.Contains('<|ACCESSING|>') then
       begin
-        OldWallpaper := GetWallpaperDirectory;
-        ChangeWallpaper('');
-
         Synchronize(
           procedure
           begin
@@ -948,14 +1101,54 @@ begin
             begin
               Status_Image.Picture.Assign(Image3.Picture);
               Status_Label.Caption := 'Access granted!';
-              Viewer := true;
-
-              Clipboard_Timer.Enabled := true;
-
-              ClearConnection;
-              frm_RemoteScreen.Show;
-              Hide;
-              Socket.SendText('<|RELATION|>' + MyID + '<|>' + TargetID_MaskEdit.Text + '<|END|>');
+              case ConnectType.ItemIndex of
+                0:
+                  begin
+                    Viewer := true;
+                    Clipboard_Timer.Enabled := true;
+                    ClearConnection;
+                    Hide;
+                    Socket.SendText('<|RELATION|>' + MyID + '<|>' +
+                      TargetID_MaskEdit.Text + '<|END|>');
+                    frm_RemoteScreen.Show;
+                  end;
+                1:
+                  begin
+                    Viewer := False;
+                    Clipboard_Timer.Enabled := False;
+                    ClearConnection;
+                    Hide;
+                    Socket.SendText('<|RELATION|>' + MyID + '<|>' +
+                      TargetID_MaskEdit.Text + '<|END|>');
+                    frm_ShareFiles.Show;
+                  end;
+                2:
+                  begin
+                    Viewer := False;
+                    Clipboard_Timer.Enabled := False;
+                    ClearConnection;
+                    Hide;
+                    Socket.SendText('<|RELATION|>' + MyID + '<|>' +
+                      TargetID_MaskEdit.Text + '<|END|>');
+                    frm_Terminal.Show;
+                  end;
+                3:
+                  begin
+                    Viewer := False;
+                    Clipboard_Timer.Enabled := False;
+                    ClearConnection;
+                    Hide;
+                    Socket.SendText('<|RELATION|>' + MyID + '<|>' +
+                      TargetID_MaskEdit.Text + '<|END|>');
+                    frm_Chat.Show;
+                  end;
+              else
+                begin
+                  ShowMessage('WHAAAT? :)');
+                end;
+              end;
+              Socket.SendText('<|RELATION|>' + MyID + '<|>' +
+                TargetID_MaskEdit.Text + '<|END|>');
             end;
           end);
       end;
@@ -970,9 +1163,7 @@ begin
               frm_RemoteScreen.Hide;
               frm_ShareFiles.Hide;
               frm_Chat.Hide;
-
-              if Accessed then
-                ChangeWallpaper(OldWallpaper);
+              frm_Terminal.Hide;
 
               ReconnectSecundarySockets;
 
@@ -989,6 +1180,15 @@ begin
       end;
 
       { Redirected commands }
+      // Desktop Remote
+      if (Buffer.Contains('<|SCREEN|>')) then
+      begin
+        BufferTemp := Buffer;
+        Delete(BufferTemp, 1, Pos('<|END|>', BufferTemp) + 12);
+
+        OldWallpaper := GetWallpaperDirectory;
+        ChangeWallpaper('');
+      end;
 
       // Desktop Remote
       Position := Pos('<|RESOLUTION|>', Buffer);
@@ -998,12 +1198,14 @@ begin
 
         Delete(BufferTemp, 1, Position + 13);
 
-        Position                       := Pos('<|>', BufferTemp);
-        frm_Main.ResolutionTargetWidth := StrToInt(Copy(BufferTemp, 1, Position - 1));
+        Position := Pos('<|>', BufferTemp);
+        frm_Main.ResolutionTargetWidth :=
+          StrToInt(Copy(BufferTemp, 1, Position - 1));
 
         Delete(BufferTemp, 1, Position + 2);
 
-        frm_Main.ResolutionTargetHeight := StrToInt(Copy(BufferTemp, 1, Pos('<|END|>', BufferTemp) - 1));
+        frm_Main.ResolutionTargetHeight :=
+          StrToInt(Copy(BufferTemp, 1, Pos('<|END|>', BufferTemp) - 1));
       end;
 
       Position := Pos('<|SETMOUSEPOS|>', Buffer);
@@ -1013,7 +1215,7 @@ begin
 
         Delete(BufferTemp, 1, Position + 14);
 
-        Position  := Pos('<|>', BufferTemp);
+        Position := Pos('<|>', BufferTemp);
         MousePosX := StrToInt(Copy(BufferTemp, 1, Position - 1));
 
         Delete(BufferTemp, 1, Position + 2);
@@ -1030,7 +1232,7 @@ begin
 
         Delete(BufferTemp, 1, Position + 24);
 
-        Position  := Pos('<|>', BufferTemp);
+        Position := Pos('<|>', BufferTemp);
         MousePosX := StrToInt(Copy(BufferTemp, 1, Position - 1));
 
         Delete(BufferTemp, 1, Position + 2);
@@ -1048,7 +1250,7 @@ begin
 
         Delete(BufferTemp, 1, Position + 22);
 
-        Position  := Pos('<|>', BufferTemp);
+        Position := Pos('<|>', BufferTemp);
         MousePosX := StrToInt(Copy(BufferTemp, 1, Position - 1));
 
         Delete(BufferTemp, 1, Position + 2);
@@ -1066,7 +1268,7 @@ begin
 
         Delete(BufferTemp, 1, Position + 25);
 
-        Position  := Pos('<|>', BufferTemp);
+        Position := Pos('<|>', BufferTemp);
         MousePosX := StrToInt(Copy(BufferTemp, 1, Position - 1));
 
         Delete(BufferTemp, 1, Position + 2);
@@ -1084,7 +1286,7 @@ begin
 
         Delete(BufferTemp, 1, Position + 23);
 
-        Position  := Pos('<|>', BufferTemp);
+        Position := Pos('<|>', BufferTemp);
         MousePosX := StrToInt(Copy(BufferTemp, 1, Position - 1));
 
         Delete(BufferTemp, 1, Position + 2);
@@ -1102,7 +1304,7 @@ begin
 
         Delete(BufferTemp, 1, Position + 21);
 
-        Position  := Pos('<|>', BufferTemp);
+        Position := Pos('<|>', BufferTemp);
         MousePosX := StrToInt(Copy(BufferTemp, 1, Position - 1));
 
         Delete(BufferTemp, 1, Position + 2);
@@ -1120,7 +1322,7 @@ begin
 
         Delete(BufferTemp, 1, Position + 19);
 
-        Position  := Pos('<|>', BufferTemp);
+        Position := Pos('<|>', BufferTemp);
         MousePosX := StrToInt(Copy(BufferTemp, 1, Position - 1));
 
         Delete(BufferTemp, 1, Position + 2);
@@ -1248,6 +1450,129 @@ begin
         Socket.SendText('<|REDIRECT|><|FOLDERLIST|>' + ListFolders(BufferTemp) + '<|ENDFOLDERLIST|>');
       end;
 
+      // Terminal
+      if (Pos('<|TERMINAL|>', Buffer) > 0) then
+      begin
+        BufferTemp := Buffer;
+        Delete(BufferTemp, 1, Pos('<|TERMINAL|>', BufferTemp) + 11);
+        strList := TStringList.Create;
+        TerminalOutput := TMemoryStream.Create;
+
+        Buffer := Copy(BufferTemp, 1, Pos('<|END|>', BufferTemp) - 1);
+
+        BufferTemp := Buffer;
+        Buffer := Copy(BufferTemp, 1, Pos('>', BufferTemp) - 1);
+        // строка до команды
+        Delete(BufferTemp, 1, Pos('>', BufferTemp)); // команда
+        if (BufferTemp <> 'SET') and (BufferTemp <> 'VER') and
+          (BufferTemp <> 'CMD') then
+        begin
+
+          if Length(BufferTemp) = 2 then
+            if BufferTemp[2] = ':' then
+              if not DirectoryExists(BufferTemp) then
+              begin
+                BufferTemp := 'cd ' + AnsiUpperCase(BufferTemp);
+                strList.Clear;
+                strList.Add('Нет такого диска ' + BufferTemp);
+                strList.Add(Buffer + '\>');
+                Continue
+              end
+              else
+              begin
+                BufferTemp := AnsiUpperCase(BufferTemp);
+                // иначе переходим на нужный диск
+                strList.Add(BufferTemp + '\>');
+              end;
+          if (Pos('cd ', trim(BufferTemp)) = 1) then
+          begin
+            Delete(BufferTemp, 1, 3);
+            if not DirectoryExists(BufferTemp) then
+            begin
+              strList.Clear;
+              strList.Add('Нет такой директории ' + BufferTemp);
+              strList.Add(Buffer + '\>');
+              Continue
+            end
+            else
+            begin
+              BufferTemp := AnsiUpperCase(BufferTemp);
+              // иначе переходим на нужную директорию
+              strList.Add(BufferTemp + '>');
+            end;
+          end
+          else
+          begin
+            strList := GetDosOutput(BufferTemp, Buffer);
+
+            if Pos('\', Buffer) <> 0 then
+              Buffer := Buffer + '>'
+            else
+              Buffer := Buffer + '\>';
+
+            strList.Add(Buffer);
+          end;
+
+          TerminalOutput.Clear;
+          strList.SaveToStream(TerminalOutput);
+          Size := TerminalOutput.Size;
+          frm_Main.Terminal_Socket.Socket.SendBuf(Size, SizeOf(Size));
+          TerminalOutput.Seek(0, soFromBeginning);
+          frm_Main.Terminal_Socket.Socket.SendStream(TerminalOutput);
+        end
+        else
+        begin
+          if BufferTemp = 'SET' then
+          begin
+            strList := GetDosOutput(BufferTemp, 'C:\');
+
+            TerminalOutput.Clear;
+            strList.SaveToStream(TerminalOutput);
+            Size := TerminalOutput.Size;
+            frm_Main.Terminal_Socket.Socket.SendBuf(Size, SizeOf(Size));
+            TerminalOutput.Seek(0, soFromBeginning);
+            frm_Main.Terminal_Socket.Socket.SendStream(TerminalOutput);
+          end
+          else if BufferTemp = 'VER' then
+          begin
+            strList := GetDosOutput(BufferTemp, 'C:\');
+
+            TerminalOutput.Clear;
+            strList.SaveToStream(TerminalOutput);
+            Size := TerminalOutput.Size;
+            frm_Main.Terminal_Socket.Socket.SendBuf(Size, SizeOf(Size));
+            TerminalOutput.Seek(0, soFromBeginning);
+            frm_Main.Terminal_Socket.Socket.SendStream(TerminalOutput);
+          end
+          else
+          begin
+            strList := GetDosOutput(BufferTemp, 'C:\');
+            TerminalOutput.Clear;
+            strList.SaveToStream(TerminalOutput);
+            Size := TerminalOutput.Size;
+            frm_Main.Terminal_Socket.Socket.SendBuf(Size, SizeOf(Size));
+            TerminalOutput.Seek(0, soFromBeginning);
+            frm_Main.Terminal_Socket.Socket.SendStream(TerminalOutput);
+          end;
+        end;
+        strList.Free;
+      end;
+
+      // Share Files
+      // Request Folder List
+      Position := Pos('<|GETFOLDERS|>', Buffer);
+      if Position > 0 then
+      begin
+        BufferTemp := Buffer;
+
+        Delete(BufferTemp, 1, Position + 13);
+
+        BufferTemp := Copy(BufferTemp, 1, Pos('<|END|>', BufferTemp) - 1);
+
+        Socket.SendText('<|REDIRECT|><|FOLDERLIST|>' + ListFolders(BufferTemp) +
+          '<|ENDFOLDERLIST|>');
+      end;
+
       // Request Files List
       Position := Pos('<|GETFILES|>', Buffer);
       if Position > 0 then
@@ -1280,7 +1605,7 @@ begin
         BufferTemp := Buffer;
         Delete(BufferTemp, 1, Position + 13);
 
-        FoldersAndFiles      := TStringList.Create;
+        FoldersAndFiles := TStringList.Create;
         FoldersAndFiles.Text := Copy(BufferTemp, 1, Pos('<|ENDFOLDERLIST|>', BufferTemp) - 1);
         FoldersAndFiles.Sort;
 
@@ -1336,7 +1661,7 @@ begin
 
         Delete(BufferTemp, 1, Position + 12);
 
-        FoldersAndFiles      := TStringList.Create;
+        FoldersAndFiles := TStringList.Create;
         FoldersAndFiles.Text := Copy(BufferTemp, 1, Pos('<|ENDFILESLIST|>', BufferTemp) - 1);
         FoldersAndFiles.Sort;
 
@@ -1530,31 +1855,114 @@ begin
 
   except
   end;
+end;
 
+procedure TThread_Connection_Terminal.Execute;
+var
+  s, s2, s4: string;
+  strList: TStringList;
+  p: TPoint;
+  i: Integer;
+  BytesReceived: longint;
+  CopyBuffer: Pointer; { buffer for copying }
+  ChunkSize: Integer;
+  TempSize, FSize: Integer;
+  stream: TMemoryStream;
+  writing: Boolean;
+const
+  MaxChunkSize: longint = 8192; { copy in 8K chunks }
+begin
+  stream := TMemoryStream.Create;
+  FSize := 0;
+  writing := False;
+  strList := TStringList.Create;
+  while (Socket.Connected) do
+  begin
+
+    Sleep(ProcessingSlack); // Avoids using 100% CPU
+
+    try
+
+      if (Socket.ReceiveLength > 0) then
+      begin
+        If FSize = 0 then
+        begin
+          If Socket.ReceiveLength >= SizeOf(TempSize) then
+          begin
+            Socket.ReceiveBuf(TempSize, TempSize.Size);
+            stream.Clear;
+            stream.SetSize(TempSize);
+            FSize := TempSize // Threadsafe code!
+          End;
+        End;
+        If (FSize > 0) and not(writing) then
+        begin
+          getmem(CopyBuffer, MaxChunkSize); { allocate the buffer }
+          writing := true;
+          While Socket.ReceiveLength > 0 do
+          Begin
+            ChunkSize := Socket.ReceiveLength;
+            If ChunkSize > MaxChunkSize then
+              ChunkSize := MaxChunkSize;
+            BytesReceived := Socket.ReceiveBuf(CopyBuffer^, ChunkSize);
+            stream.Write(CopyBuffer^, BytesReceived); { ...write chunk }
+            Dec(FSize, BytesReceived);
+          End;
+          If FSize = 0 then
+          begin
+
+            stream.Seek(0, soFromBeginning);
+            strList.LoadFromStream(stream);
+
+            for i := 0 to strList.count - 1 do
+            begin
+              s2 := strList.Strings[i];
+
+              if trim(s2) = '' then
+                Continue;
+
+              frm_Terminal.TerminalSession.Lines.Add(s2);
+              frm_Terminal.TerminalSession.SetFocus;
+              frm_Terminal.TerminalSession.SelStart :=
+                Length(frm_Terminal.TerminalSession.Text);
+              frm_Terminal.TerminalSession.SelLength := 0;
+              p.x := Length(s2);
+              p.y := frm_Terminal.TerminalSession.Lines.count - 1;
+              frm_Terminal.TerminalSession.CaretPos := p;
+            end;
+          end;
+        End;
+        FreeMem(CopyBuffer, MaxChunkSize); { allocate the buffer }
+        writing := False;
+      end;
+    except
+    end;
+  end;
+  strList.Free;
 end;
 
 // Connection of Desktop screens
 procedure TThread_Connection_Desktop.Execute;
 var
-  Position    : Integer;
-  Buffer      : string;
-  TempBuffer  : string;
-  MyFirstBmp  : TMemoryStream;
-  PackStream  : TMemoryStream;
+  Position: Integer;
+  Buffer: string;
+  TempBuffer: string;
+  MyFirstBmp: TMemoryStream;
+  PackStream: TMemoryStream;
   MyTempStream: TMemoryStream;
   UnPackStream: TMemoryStream;
   MyCompareBmp: TMemoryStream;
-  MySecondBmp : TMemoryStream;
+  MySecondBmp: TMemoryStream;
 
 begin
   inherited;
 
-  MyFirstBmp   := TMemoryStream.Create;
+  MyFirstBmp := TMemoryStream.Create;
   UnPackStream := TMemoryStream.Create;
   MyTempStream := TMemoryStream.Create;
-  MySecondBmp  := TMemoryStream.Create;
+  MySecondBmp := TMemoryStream.Create;
   MyCompareBmp := TMemoryStream.Create;
-  PackStream   := TMemoryStream.Create;
+  PackStream := TMemoryStream.Create;
 
   try
 
@@ -1579,7 +1987,7 @@ begin
 
           Delete(Buffer, 1, Position + 20);
 
-          ResolutionWidth  := Screen.Width;
+          ResolutionWidth := Screen.Width;
           ResolutionHeight := Screen.Height;
 
           frm_Main.Main_Socket.Socket.SendText('<|REDIRECT|><|RESOLUTION|>' + IntToStr(Screen.Width) + '<|>' + IntToStr(Screen.Height) + '<|END|>');
@@ -1674,7 +2082,7 @@ begin
 
             Delete(Buffer, 1, Pos('<|IMAGE|>', Buffer) + 8);
 
-            Position   := Pos('<|END|>', Buffer);
+            Position := Pos('<|END|>', Buffer);
             TempBuffer := Copy(Buffer, 1, Position - 1);
             MyTempStream.Write(AnsiString(TempBuffer)[1], Length(TempBuffer));
             Delete(Buffer, 1, Position + 6); // Clears the memory of the image that was processed.
@@ -1761,17 +2169,17 @@ end;
 // Connection of Share Files
 procedure TThread_Connection_Files.Execute;
 var
-  Position     : Integer;
-  FileSize     : Int64;
+  Position: Integer;
+  FileSize: Int64;
   ReceivingFile: Boolean;
-  Buffer       : string;
-  BufferTemp   : string;
-  FileStream   : TFileStream;
+  Buffer: string;
+  BufferTemp: string;
+  FileStream: TFileStream;
 begin
   inherited;
 
   ReceivingFile := False;
-  FileStream    := nil;
+  FileStream := nil;
 
   try
 
@@ -1811,7 +2219,7 @@ begin
 
             BufferTemp := Copy(BufferTemp, 1, Pos('<|END|>', BufferTemp) - 1);
 
-            FileSize   := StrToInt(BufferTemp);
+            FileSize := StrToInt(BufferTemp);
             FileStream := TFileStream.Create(frm_ShareFiles.DirectoryToSaveFile + '.tmp', fmCreate or fmOpenReadWrite);
 
             if (frm_Main.Viewer) then

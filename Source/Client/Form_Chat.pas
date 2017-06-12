@@ -12,6 +12,7 @@ type
     Chat_RichEdit: TRichEdit;
     procedure YourText_EditKeyPress(Sender: TObject; var Key: Char);
     procedure FormCreate(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
   private
     procedure WMGetMinMaxInfo(var Message: TWMGetMinMaxInfo); message WM_GETMINMAXINFO;
     { Private declarations }
@@ -41,6 +42,16 @@ begin
 
   MinMaxInfo^.ptMinTrackSize.X := 230; // Minimum Width
   MinMaxInfo^.ptMinTrackSize.Y := 340; // Minimum Height
+end;
+
+procedure Tfrm_Chat.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  if (frm_Main.ConnectType.ItemIndex = 3) then
+  begin
+    frm_Main.SetOffline;
+    frm_Main.CloseSockets;
+    frm_Main.Reconnect;
+  end;
 end;
 
 procedure Tfrm_Chat.FormCreate(Sender: TObject);

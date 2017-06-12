@@ -66,6 +66,9 @@ object frm_Main: Tfrm_Main
       item
         Caption = 'Ping'
         Width = 80
+      end
+      item
+        Caption = 'ID'
       end>
     GridLines = True
     ReadOnly = True

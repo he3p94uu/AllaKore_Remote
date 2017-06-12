@@ -13,8 +13,7 @@ object frm_Password: Tfrm_Password
   Font.Name = 'Tahoma'
   Font.Style = []
   OldCreateOrder = False
-  Position = poScreenCenter
-  StyleElements = [seFont, seClient]
+  Position = poMainFormCenter
   OnClose = FormClose
   OnCreate = FormCreate
   OnShow = FormShow

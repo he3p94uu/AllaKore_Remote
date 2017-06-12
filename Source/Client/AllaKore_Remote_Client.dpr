@@ -13,7 +13,8 @@ uses
   StreamManager in '..\Units\StreamManager.pas',
   ZLibEx in '..\Units\DelphiZlib\ZLibEx.pas',
   ZLibExApi in '..\Units\DelphiZlib\ZLibExApi.pas',
-  ZLibExGZ in '..\Units\DelphiZlib\ZLibExGZ.pas';
+  ZLibExGZ in '..\Units\DelphiZlib\ZLibExGZ.pas',
+  Form_RemoteTerminal in 'Form_RemoteTerminal.pas' {frm_RemoteTerminal};
 
 {$R *.res}
 
@@ -27,5 +28,6 @@ begin
   Application.CreateForm(Tfrm_RemoteScreen, frm_RemoteScreen);
   Application.CreateForm(Tfrm_Chat, frm_Chat);
   Application.CreateForm(Tfrm_ShareFiles, frm_ShareFiles);
+  Application.CreateForm(Tfrm_RemoteTerminal, frm_terminal);
   Application.Run;
 end.

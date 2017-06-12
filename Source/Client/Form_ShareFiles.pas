@@ -25,6 +25,7 @@ type
     Bevel1: TBevel;
     SizeDownload_Label: TLabel;
     SizeUpload_Label: TLabel;
+    Button1: TButton;
     procedure FormShow(Sender: TObject);
     procedure Directory_EditKeyPress(Sender: TObject; var Key: Char);
     procedure ShareFiles_ListViewDblClick(Sender: TObject);
@@ -32,6 +33,8 @@ type
     procedure Download_BitBtnClick(Sender: TObject);
     procedure Upload_BitBtnClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
+    procedure Button1Click(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
   private
     procedure WMGetMinMaxInfo(var Message: TWMGetMinMaxInfo); message WM_GETMINMAXINFO;
     procedure GoToDirectory(Directory: string);
@@ -137,12 +140,29 @@ begin
   end;
 end;
 
-procedure Tfrm_ShareFiles.Directory_EditKeyPress(Sender: TObject; var Key: Char);
+procedure Tfrm_ShareFiles.Button1Click(Sender: TObject);
+begin
+  GoToDirectory(Directory_Edit.Text);
+end;
+
+procedure Tfrm_ShareFiles.Directory_EditKeyPress(Sender: TObject;
+  var Key: Char);
 begin
   if (Key = #13) then
   begin
     GoToDirectory(Directory_Edit.Text);
     Key := #0;
+  end;
+end;
+
+procedure Tfrm_ShareFiles.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  if (frm_Main.ConnectType.ItemIndex = 1) then
+  begin
+    frm_Main.SetOffline;
+    frm_Main.CloseSockets;
+    frm_Main.Reconnect;
+    frm_Main.ReconnectSecundarySockets;
   end;
 end;
 

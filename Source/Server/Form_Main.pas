@@ -1,5 +1,5 @@
 {
-
+
 
   This source has created by Maickonn Richard.
   Any questions, contact-me: senjaxus@gmail.com
@@ -87,6 +87,18 @@ type
     procedure Execute; override;
   end;
 
+  // Thread to Define type connection are Terminal.
+type
+  TThreadConnection_Terminal = class(TThread)
+  private
+    AThread_Terminal: TCustomWinSocket;
+    AThread_Terminal_Target: TCustomWinSocket;
+    MyID: string;
+  public
+    constructor Create(AThread: TCustomWinSocket; ID: string); overload;
+    procedure Execute; override;
+  end;
+
 type
   Tfrm_Main = class(TForm)
     Splitter1: TSplitter;
@@ -157,6 +169,15 @@ begin
   inherited Create(False);
   AThread_Files   := AThread;
   MyID            := ID;
+  FreeOnTerminate := true;
+end;
+
+constructor TThreadConnection_Terminal.Create(AThread: TCustomWinSocket;
+  ID: string);
+begin
+  inherited Create(False);
+  AThread_Terminal := AThread;
+  MyID := ID;
   FreeOnTerminate := true;
 end;
 
@@ -337,6 +358,7 @@ var
   ThreadDesktop : TThreadConnection_Desktop;
   ThreadKeyboard: TThreadConnection_Keyboard;
   ThreadFiles   : TThreadConnection_Files;
+  ThreadTerminal: TThreadConnection_Terminal;
 begin
   inherited;
 
@@ -402,6 +424,20 @@ begin
         break; // Break the while
       end;
 
+      position := Pos('<|TERMINALSOCKET|>', Buffer);
+      if position > 0 then
+      begin
+        BufferTemp := Buffer;
+
+        Delete(BufferTemp, 1, Pos('<|TERMINALSOCKET|>', Buffer) + 17);
+        ID := Copy(BufferTemp, 1, Pos('<|END|>', BufferTemp) - 1);
+
+        // Create the Thread for Files Socket
+        ThreadTerminal := TThreadConnection_Terminal.Create(AThread_Define, ID);
+
+        break; // Break the while
+      end;
+
     end;
 
   except
@@ -426,6 +462,8 @@ begin
   L.SubItems.Add('');
   L.SubItems.Add('Calculating...');
   L.SubItems.Objects[4] := TObject(0);
+  L.SubItems.Add(ID);
+  L.SubItems.Objects[5] := TObject(0);
 end;
 
 // The connection type is the main.
@@ -568,6 +606,14 @@ begin
 
         // Get first screenshot
         TThreadConnection_Desktop(L.SubItems.Objects[1]).AThread_Desktop_Target.SendText('<|GETFULLSCREENSHOT|>');
+
+        // Relates the Share Terminal
+        TThreadConnection_Terminal(L.SubItems.Objects[5])
+          .AThread_Terminal_Target := TThreadConnection_Terminal
+          (L2.SubItems.Objects[5]).AThread_Terminal;
+        TThreadConnection_Terminal(L2.SubItems.Objects[5])
+          .AThread_Terminal_Target := TThreadConnection_Terminal
+          (L.SubItems.Objects[5]).AThread_Terminal;
 
       end;
 
@@ -830,6 +876,37 @@ begin
   end;
 
 end;
+
+// The connection type is the Terminal Remote
+procedure TThreadConnection_Terminal.Execute;
+var
+  s: string;
+  L: TListItem;
+begin
+  inherited;
+
+  L := FindListItemID(MyID);
+  L.SubItems.Objects[5] := TObject(Self);
+
+  try
+    while AThread_Terminal.Connected do
+    begin
+
+      Sleep(ProcessingSlack);
+
+      if AThread_Terminal.ReceiveLength < 1 then
+        Continue;
+
+      s := AThread_Terminal.ReceiveText;
+
+      while AThread_Terminal_Target.SendText(s) < 0 do
+        Sleep(ProcessingSlack);
+
+    end;
+  except
+  end;
+end;
+
 
 procedure Tfrm_Main.Ping_TimerTimer(Sender: TObject);
 var
